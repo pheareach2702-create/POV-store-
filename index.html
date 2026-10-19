@@ -104,7 +104,7 @@
     <!-- Main Invoice Container -->
     <div id="invoice-container" class="max-w-4xl mx-auto bg-white p-8 md:p-12 shadow-lg rounded-lg">
         
-        <!-- Header (មានតែពាក្យ INVOICE) -->
+        <!-- Header -->
         <div class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-blue-600 tracking-widest">INVOICE</h1>
         </div>
@@ -182,7 +182,7 @@
 
     </div>
 
-    <!-- Product Dashboard Modal (Hidden by default) -->
+    <!-- Product Dashboard Modal -->
     <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
         <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
             <div class="flex justify-between items-center mb-4">
@@ -207,15 +207,13 @@
                             <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="dashboard-product-list">
-                        <!-- Populated by JS -->
-                    </tbody>
+                    <tbody id="dashboard-product-list"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Customer Dashboard Modal (Hidden by default) -->
+    <!-- Customer Dashboard Modal -->
     <div id="customer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
         <div class="bg-white rounded-lg p-6 w-full max-w-3xl shadow-xl">
             <div class="flex justify-between items-center mb-4">
@@ -242,15 +240,13 @@
                             <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="dashboard-customer-list">
-                        <!-- Populated by JS -->
-                    </tbody>
+                    <tbody id="dashboard-customer-list"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Invoice History Modal (Hidden by default) -->
+    <!-- Invoice History Modal -->
     <div id="invoice-history-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
         <div class="bg-white rounded-lg p-6 w-full max-w-4xl shadow-xl">
             <div class="flex justify-between items-center mb-4">
@@ -270,15 +266,13 @@
                             <th class="py-2 px-3 w-32 text-center border-b text-gray-700">សកម្មភាព</th>
                         </tr>
                     </thead>
-                    <tbody id="dashboard-invoice-history">
-                        <!-- Populated by JS -->
-                    </tbody>
+                    <tbody id="dashboard-invoice-history"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Datalists for Autocomplete Search -->
+    <!-- Datalists -->
     <datalist id="product-datalist"></datalist>
     <datalist id="customer-datalist"></datalist>
 
@@ -288,17 +282,17 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Hardcoded Firebase configuration to ensure it works on GitHub Pages
+        // Hardcoded Firebase configuration for GitHub Pages
         const appId = 'pov-store-app';
-       const firebaseConfig = {
-  apiKey: "AIzaSyAB7fhSgZl2T-b0QQPALWGnr1pLufBUNnw",
-  authDomain: "seller-2d87c.firebaseapp.com",
-  projectId: "seller-2d87c",
-  storageBucket: "seller-2d87c.firebasestorage.app",
-  messagingSenderId: "422003036191",
-  appId: "1:422003036191:web:5842dd71e3a7ae9441052a",
-  measurementId: "G-226J01X1J6"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAB7fhSgZl2T-b0QQPALWGnr1pLufBUNnw",
+            authDomain: "seller-2d87c.firebaseapp.com",
+            projectId: "seller-2d87c",
+            storageBucket: "seller-2d87c.firebasestorage.app",
+            messagingSenderId: "422003036191",
+            appId: "1:422003036191:web:5842dd71e3a7ae9441052a",
+            measurementId: "G-226J01X1J6"
+        };
         
         let app, auth, db;
         try {
@@ -315,7 +309,6 @@
         let invoiceHistoryList = [];
         const MAX_INVOICES = 500;
 
-        // Initialize App & Authentication
         async function initApp() {
             if (!auth) return;
             try {
@@ -326,17 +319,11 @@
                 }
                 userId = auth.currentUser.uid;
                 
-                // Migrate old local data to cloud on first load
                 await migrateLocalData();
-                
-                // Start listening to real-time cloud data
                 initDataListeners();
-                
-                // Load unsaved draft if exists
                 loadDraft();
                 document.getElementById('current-date').valueAsDate = new Date();
                 
-                // Event listeners for auto-save draft
                 document.getElementById('invoice-container').addEventListener('input', window.autoSaveDraft);
                 document.getElementById('invoice-container').addEventListener('change', window.autoSaveDraft);
             } catch (error) {
@@ -377,7 +364,6 @@
         function initDataListeners() {
             if (!userId) return;
 
-            // Watch Products Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'products'), (snapshot) => {
                 productList = [];
                 snapshot.forEach(d => productList.push({ id: d.id, ...d.data() }));
@@ -385,7 +371,6 @@
                 if(document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
             }, (error) => console.error(error));
 
-            // Watch Customers Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'customers'), (snapshot) => {
                 customerList = [];
                 snapshot.forEach(d => customerList.push({ id: d.id, ...d.data() }));
@@ -393,11 +378,10 @@
                 if(document.getElementById('customer-modal').classList.contains('flex')) window.renderDashboardCustomers();
             }, (error) => console.error(error));
 
-            // Watch Invoices Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'invoices'), (snapshot) => {
                 invoiceHistoryList = [];
                 snapshot.forEach(d => invoiceHistoryList.push({ id: d.id, ...d.data() }));
-                invoiceHistoryList.sort((a, b) => b.id.localeCompare(a.id)); // Sort newest first
+                invoiceHistoryList.sort((a, b) => b.id.localeCompare(a.id));
                 if(document.getElementById('invoice-history-modal').classList.contains('flex')) window.renderInvoiceHistory();
             }, (error) => console.error(error));
         }
@@ -602,11 +586,9 @@
             });
             invoiceData.grandTotal = subtotal + (parseFloat(invoiceData.unpaidBill) || 0);
 
-            // Save to Cloud
             await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id), invoiceData);
             localStorage.removeItem('invoiceDraft');
             
-            // Handle max limit directly in cloud by deleting oldest if exceeded
             if (invoiceHistoryList.length >= MAX_INVOICES) {
                 const oldest = invoiceHistoryList[invoiceHistoryList.length - 1];
                 await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', oldest.id));
@@ -804,7 +786,6 @@
             }
         }
 
-        // Kick off initialization
         initApp();
     </script>
 </body>
