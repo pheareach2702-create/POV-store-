@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Input styling for screen */
+        .editable-input {
+            width: 100%;
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+            transition: all 0.2s;
+        }
+        .editable-input:hover, .editable-input:focus {
+            border-color: #d1d5db;
+            background-color: #f9fafb;
+            outline: none;
+        }
+        
+        /* Specific Print Styles */
+        @media print {
+            body {
+                background-color: white;
+            }
+            #invoice-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .editable-input {
+                border: none !important;
+                background-color: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                resize: none;
+            }
+            /* Hide placeholder texts when printing empty inputs */
+            ::-webkit-input-placeholder { color: transparent; }
+            :-moz-placeholder { color: transparent; }
+            ::-moz-placeholder { color: transparent; }
+            :-ms-input-placeholder { color: transparent; }
+        }
+    </style>
+</head>
+<body class="py-10 text-gray-800">
+
+    <!-- Action Buttons (Hidden on Print) -->
+    <div class="max-w-4xl mx-auto mb-4 flex justify-end gap-3 no-print px-4 flex-wrap">
+        <button onclick="openInvoiceHistory()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            ប្រវត្តិវិក្កយបត្រ
+        </button>
+        <button onclick="saveCurrentInvoice()" id="save-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            រក្សាទុក
+        </button>
+        <button onclick="openCustomerDashboard()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            អតិថិជន
+        </button>
+        <button onclick="openProductDashboard()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            ទំនិញ
+        </button>
+        <button onclick="backupData()" id="backup-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow flex items-center transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Backup
+        </button>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print
+        </button>
+        <p id="save-status" class="w-full text-right text-sm text-gray-600" role="status" aria-live="polite">Connecting to Firebase...</p>
+    </div>
+
+    <!-- Main Invoice Container -->
+    <div id="invoice-container" class="max-w-4xl mx-auto bg-white p-8 md:p-12 shadow-lg rounded-lg">
+        
+        <!-- Header (មានតែពាក្យ INVOICE) -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-blue-600 tracking-widest">INVOICE</h1>
+        </div>
+
+        <!-- Billing Info & Date -->
+        <div class="mb-8 border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between">
+            <div class="w-full md:w-1/2">
+                <h2 class="text-gray-600 font-bold mb-2">BILL TO:</h2>
+                <input type="text" id="client-name-input" list="customer-datalist" class="editable-input font-semibold text-lg text-gray-900 mb-1" placeholder="ឈ្មោះអតិថិជន (ស្វែងរក...)" oninput="updateClientInfo()">
+                <textarea id="client-address-input" rows="3" class="editable-input text-gray-600 resize-none" placeholder="លេខទូរសព្ទ និង អាសយដ្ឋាន..."></textarea>
+            </div>
+            
+            <div class="w-full md:w-1/2 mt-6 md:mt-0 flex items-start md:justify-end">
+                <div class="flex items-center mt-2">
+                    <span class="text-gray-600 font-bold mr-2">Date:</span>
+                    <input type="date" id="current-date" class="editable-input w-36 md:text-right text-gray-800 font-medium">
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Table -->
+        <div class="overflow-x-auto mb-6">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 uppercase text-sm">
+                        <th class="py-3 px-4 border-b font-semibold">Description</th>
+                        <th class="py-3 px-4 border-b font-semibold w-24 text-center">Qty</th>
+                        <th class="py-3 px-4 border-b font-semibold w-32 text-right">Unit Price</th>
+                        <th class="py-3 px-4 border-b font-semibold w-32 text-right">Total</th>
+                        <th class="py-3 px-2 border-b w-10 no-print"></th>
+                    </tr>
+                </thead>
+                <tbody id="invoice-items">
+                    <!-- ជួរទំនិញនឹងត្រូវបង្កើតដោយស្វ័យប្រវត្តិតាមរយៈ JavaScript ពេលបើកទំព័រ -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Add Item Button -->
+        <div class="mb-8 no-print">
+            <button onclick="addRow()" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Item
+            </button>
+        </div>
+
+        <!-- Totals Section -->
+        <div class="flex justify-end mb-8">
+            <div class="w-full md:w-1/3">
+                <div class="flex justify-between py-2 border-b">
+                    <span class="font-semibold text-gray-600">Subtotal:</span>
+                    <span class="font-medium text-gray-800">\$<span id="subtotal">0.00</span></span>
+                </div>
+                <div class="flex justify-between py-2 border-b items-center">
+                    <span class="font-semibold text-gray-600">Unpaid Bill:</span>
+                    <div class="flex items-center text-gray-800 font-medium justify-end">
+                        <span class="mr-1">\$</span>
+                        <input type="number" id="unpaid-bill" class="editable-input text-right w-24 m-0 p-0" value="0.00" min="0" step="0.01" onchange="calculateTotals()" onkeyup="calculateTotals()">
+                    </div>
+                </div>
+                <div class="flex justify-between py-3 border-b-2 border-gray-800">
+                    <span class="font-bold text-gray-900 text-lg">Grand Total:</span>
+                    <span class="font-bold text-blue-600 text-lg">\$<span id="grand-total">0.00</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="mb-4">
+            <h3 class="text-gray-600 font-bold mb-2">បញ្ជាក់:</h3>
+            <textarea rows="2" class="editable-input w-full text-gray-600 text-sm" placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ...">ទំនិញ ដែល ទិញហើយ មិនអាច ប្តូរវិញបានទេ</textarea>
+        </div>
+
+    </div>
+
+    <!-- Product Dashboard Modal (Hidden by default) -->
+    <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Product Dashboard</h2>
+                <button onclick="closeProductDashboard()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="mb-4 flex gap-2">
+                <input type="text" id="new-product-name" placeholder="Product Name" class="border rounded px-3 py-2 flex-1 outline-none focus:border-blue-500">
+                <input type="number" id="new-product-price" placeholder="Price (\$)" class="border rounded px-3 py-2 w-24 outline-none focus:border-blue-500" min="0" step="0.01">
+                <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded">Add</button>
+            </div>
+
+            <div class="max-h-60 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">Product Name</th>
+                            <th class="py-2 px-3 w-24 text-right border-b text-gray-700">Price</th>
+                            <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-product-list">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Dashboard Modal (Hidden by default) -->
+    <div id="customer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-lg p-6 w-full max-w-3xl shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Customer Dashboard (គ្រប់គ្រងអតិថិជន)</h2>
+                <button onclick="closeCustomerDashboard()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="mb-4 flex flex-col md:flex-row gap-2">
+                <input type="text" id="new-customer-name" placeholder="ឈ្មោះអតិថិជន" class="border rounded px-3 py-2 flex-1 outline-none focus:border-blue-500">
+                <input type="text" id="new-customer-phone" placeholder="លេខទូរសព្ទ" class="border rounded px-3 py-2 flex-1 outline-none focus:border-blue-500">
+                <input type="text" id="new-customer-address" placeholder="អាសយដ្ឋាន" class="border rounded px-3 py-2 flex-1 outline-none focus:border-blue-500">
+                <button onclick="addNewCustomer()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded transition">បន្ថែម</button>
+            </div>
+
+            <div class="max-h-60 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">ឈ្មោះអតិថិជន</th>
+                            <th class="py-2 px-3 border-b text-gray-700">លេខទូរសព្ទ</th>
+                            <th class="py-2 px-3 border-b text-gray-700">អាសយដ្ឋាន</th>
+                            <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-customer-list">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice History Modal (Hidden by default) -->
+    <div id="invoice-history-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">ប្រវត្តិវិក្កយបត្រ (Invoice History)</h2>
+                <button onclick="closeInvoiceHistory()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="max-h-80 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">កាលបរិច្ឆេទ</th>
+                            <th class="py-2 px-3 border-b text-gray-700">អតិថិជន</th>
+                            <th class="py-2 px-3 text-right border-b text-gray-700">សរុបទឹកប្រាក់</th>
+                            <th class="py-2 px-3 w-32 text-center border-b text-gray-700">សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-invoice-history">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datalists for Autocomplete Search -->
+    <datalist id="product-datalist"></datalist>
+    <datalist id="customer-datalist"></datalist>
+
+    <!-- JavaScript Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Hardcoded Firebase Configuration from your project setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyAB7FhSgZ12T-b0QQPALWGnr1pluFBUnNw",
+            authDomain: "seller-2d87c.firebaseapp.com",
+            projectId: "seller-2d87c",
+            storageBucket: "seller-2d87c.firebasestorage.app",
+            messagingSenderId: "422003036191",
+            appId: "1:422003036191:web:5842dd71e3a7ae9441052a",
+            measurementId: "G-226J01X1J6"
+        };
+        
+        let app, auth, db;
+        let firebaseInitializationError = null;
+        let isSavingInvoice = false;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch(e) {
+            console.error("Firebase init error", e);
+            firebaseInitializationError = e;
+        }
+
+        function showSaveStatus(message, type = 'info') {
+            const status = document.getElementById('save-status');
+            if (!status) return;
+            const colors = {
+                info: 'text-gray-600',
+                success: 'text-green-700',
+                error: 'text-red-600'
+            };
+            status.textContent = message;
+            status.className = `w-full text-right text-sm ${colors[type]}`;
+        }
+
+        function describeFirebaseError(error) {
+            const code = error?.code || 'unknown';
+            if (code === 'auth/operation-not-allowed') {
+                return 'Anonymous sign-in is disabled. Enable it in Firebase Authentication settings.';
+            }
+            if (code === 'permission-denied' || code === 'firestore/permission-denied') {
+                return 'Firestore denied the request. Check the Firestore security rules for this user and path.';
+            }
+            return `Firebase error (${code}): ${error?.message || 'Unknown error'}`;
+        }
+
+        let userId = null;
+        let customerList = [];
+        let productList = [];
+        let invoiceHistoryList = [];
+        const MAX_INVOICES = 500;
+
+        // Initialize App & Authentication
+        async function initApp() {
+            if (!auth || !db) {
+                showSaveStatus('Firebase could not initialize. Check the Firebase configuration and reload.', 'error');
+                return;
+            }
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                
+                // Migrate old local data to cloud on first load
+                await migrateLocalData();
+                
+                // Start listening to real-time cloud data
+                initDataListeners();
+                
+                // Load unsaved draft if exists
+                loadDraft();
+                document.getElementById('current-date').valueAsDate = new Date();
+                
+                // Event listeners for auto-save draft
+                document.getElementById('invoice-container').addEventListener('input', window.autoSaveDraft);
+                document.getElementById('invoice-container').addEventListener('change', window.autoSaveDraft);
+                showSaveStatus('Connected to Firebase. Invoice is ready to save.', 'success');
+            } catch (error) {
+                console.error("Authentication failed:", error);
+                firebaseInitializationError = error;
+                showSaveStatus(`Firebase connection failed: ${describeFirebaseError(error)}`, 'error');
+            }
+        }
+
+        async function migrateLocalData() {
+            if (!userId) return;
+            
+            const localCustomers = JSON.parse(localStorage.getItem('customerList'));
+            if (localCustomers && localCustomers.length > 0) {
+                for (const c of localCustomers) {
+                    const id = 'cust_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id), c);
+                }
+                localStorage.removeItem('customerList');
+            }
+            
+            const localProducts = JSON.parse(localStorage.getItem('productList'));
+            if (localProducts && localProducts.length > 0) {
+                for (const p of localProducts) {
+                    const id = 'prod_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'products', id), p);
+                }
+                localStorage.removeItem('productList');
+            }
+
+            const localInvoices = JSON.parse(localStorage.getItem('invoiceHistoryList'));
+            if (localInvoices && localInvoices.length > 0) {
+                for (const inv of localInvoices) {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', inv.id), inv);
+                }
+                localStorage.removeItem('invoiceHistoryList');
+            }
+        }
+
+        function initDataListeners() {
+            if (!userId) return;
+
+            // Watch Products Collection
+            onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'products'), (snapshot) => {
+                productList = [];
+                snapshot.forEach(d => productList.push({ id: d.id, ...d.data() }));
+                updateProductDatalist();
+                if(document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
+            }, (error) => console.error(error));
+
+            // Watch Customers Collection
+            onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'customers'), (snapshot) => {
+                customerList = [];
+                snapshot.forEach(d => customerList.push({ id: d.id, ...d.data() }));
+                updateCustomerDatalist();
+                if(document.getElementById('customer-modal').classList.contains('flex')) window.renderDashboardCustomers();
+            }, (error) => console.error(error));
+
+            // Watch Invoices Collection
+            onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'invoices'), (snapshot) => {
+                invoiceHistoryList = [];
+                snapshot.forEach(d => invoiceHistoryList.push({ id: d.id, ...d.data() }));
+                invoiceHistoryList.sort((a, b) => b.id.localeCompare(a.id)); // Sort newest first
+                if(document.getElementById('invoice-history-modal').classList.contains('flex')) window.renderInvoiceHistory();
+            }, (error) => console.error(error));
+        }
+
+        function updateProductDatalist() {
+            const datalist = document.getElementById('product-datalist');
+            if (datalist) {
+                datalist.innerHTML = productList.map((p) => `<option value="${p.name}"></option>`).join('');
+            }
+        }
+
+        function updateCustomerDatalist() {
+            const datalist = document.getElementById('customer-datalist');
+            if (datalist) {
+                datalist.innerHTML = customerList.map((c) => `<option value="${c.name}"></option>`).join('');
+            }
+        }
+
+        window.autoSaveDraft = function() {
+            const draft = {
+                customerName: document.getElementById('client-name-input').value,
+                customerAddress: document.getElementById('client-address-input').value,
+                date: document.getElementById('current-date').value,
+                unpaidBill: document.getElementById('unpaid-bill').value,
+                note: document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]').value,
+                items: []
+            };
+            document.querySelectorAll('.item-row').forEach(row => {
+                draft.items.push({
+                    name: row.querySelector('input[list="product-datalist"]').value,
+                    qty: row.querySelector('.qty-input').value,
+                    price: row.querySelector('.price-input').value
+                });
+            });
+            localStorage.setItem('invoiceDraft', JSON.stringify(draft));
+        }
+
+        function loadDraft() {
+            const draftStr = localStorage.getItem('invoiceDraft');
+            if (draftStr) {
+                try {
+                    const draft = JSON.parse(draftStr);
+                    document.getElementById('client-name-input').value = draft.customerName || '';
+                    document.getElementById('client-address-input').value = draft.customerAddress || '';
+                    if(draft.date) document.getElementById('current-date').value = draft.date;
+                    
+                    const unpaidBillInput = document.getElementById('unpaid-bill');
+                    if(unpaidBillInput) unpaidBillInput.value = draft.unpaidBill || '0.00';
+                    
+                    const noteTextarea = document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]');
+                    if(noteTextarea) noteTextarea.value = draft.note || "ទំនិញ ដែល ទិញហើយ មិនអាច ប្តូរវិញបានទេ";
+
+                    const tbody = document.getElementById('invoice-items');
+                    tbody.innerHTML = '';
+                    
+                    if (draft.items && draft.items.length > 0) {
+                        draft.items.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.className = 'item-row border-b';
+                            row.innerHTML = `
+                                <td class="py-2 px-4">
+                                    <input type="text" list="product-datalist" class="editable-input w-full text-gray-800 font-medium bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none transition-colors" placeholder="វាយស្វែងរក ឬជ្រើសរើសទំនិញ..." oninput="updatePriceFromInput(this)" onchange="updatePriceFromInput(this)" value="${item.name}">
+                                </td>
+                                <td class="py-2 px-4"><input type="number" class="editable-input text-center qty-input" value="${item.qty}" min="1" onchange="calculateTotals()" onkeyup="calculateTotals()"></td>
+                                <td class="py-2 px-4">
+                                    <div class="flex items-center justify-end">
+                                        <span class="text-gray-500 mr-1">$</span>
+                                        <input type="number" class="editable-input text-right price-input" value="${item.price}" min="0" step="0.01" onchange="calculateTotals()" onkeyup="calculateTotals()">
+                                    </div>
+                                </td>
+                                <td class="py-2 px-4 text-right">
+                                    <span class="text-gray-500 mr-1">$</span>
+                                    <span class="row-total font-medium">0.00</span>
+                                </td>
+                                <td class="py-2 px-2 text-center no-print">
+                                    <button onclick="removeRow(this)" class="text-red-500 hover:text-red-700" title="Remove Item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        window.addRow();
+                    }
+                    window.calculateTotals();
+                } catch(e) {
+                    window.addRow();
+                }
+            } else {
+                window.addRow();
+            }
+        }
+
+        window.updateClientInfo = function() {
+            const nameInput = document.getElementById('client-name-input').value;
+            const addressInput = document.getElementById('client-address-input');
+            const customer = customerList.find(c => c.name === nameInput);
+            if (customer) {
+                addressInput.value = `Tel: ${customer.phone}\nAddress: ${customer.address}`;
+            }
+        }
+
+        window.updatePriceFromInput = function(inputElement) {
+            const val = inputElement.value;
+            const row = inputElement.closest('tr');
+            const priceInput = row.querySelector('.price-input');
+            const product = productList.find(p => p.name === val);
+            if (product) {
+                priceInput.value = product.price.toFixed(2);
+                window.calculateTotals();
+            }
+        }
+
+        window.addRow = function() {
+            const tbody = document.getElementById('invoice-items');
+            const row = document.createElement('tr');
+            row.className = 'item-row border-b';
+            row.innerHTML = `
+                <td class="py-2 px-4">
+                    <input type="text" list="product-datalist" class="editable-input w-full text-gray-800 font-medium bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none transition-colors" placeholder="វាយស្វែងរក ឬជ្រើសរើសទំនិញ..." oninput="updatePriceFromInput(this)" onchange="updatePriceFromInput(this)">
+                </td>
+                <td class="py-2 px-4"><input type="number" class="editable-input text-center qty-input" value="1" min="1" onchange="calculateTotals()" onkeyup="calculateTotals()"></td>
+                <td class="py-2 px-4">
+                    <div class="flex items-center justify-end">
+                        <span class="text-gray-500 mr-1">$</span>
+                        <input type="number" class="editable-input text-right price-input" value="0.00" min="0" step="0.01" onchange="calculateTotals()" onkeyup="calculateTotals()">
+                    </div>
+                </td>
+                <td class="py-2 px-4 text-right">
+                    <span class="text-gray-500 mr-1">$</span>
+                    <span class="row-total font-medium">0.00</span>
+                </td>
+                <td class="py-2 px-2 text-center no-print">
+                    <button onclick="removeRow(this)" class="text-red-500 hover:text-red-700" title="Remove Item">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+            window.calculateTotals();
+        }
+
+        window.removeRow = function(button) {
+            button.closest('tr').remove();
+            window.calculateTotals();
+        }
+
+        window.calculateTotals = function() {
+            const rows = document.querySelectorAll('.item-row');
+            let subtotal = 0;
+            rows.forEach(row => {
+                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                const price = parseFloat(row.querySelector('.price-input').value) || 0;
+                const total = qty * price;
+                row.querySelector('.row-total').textContent = total.toFixed(2);
+                subtotal += total;
+            });
+            const unpaidBillInput = document.getElementById('unpaid-bill');
+            const unpaidBill = unpaidBillInput ? (parseFloat(unpaidBillInput.value) || 0) : 0;
+            const grandTotal = subtotal + unpaidBill;
+
+            document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+            document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
+            window.autoSaveDraft();
+        }
+
+        window.saveCurrentInvoice = async function() {
+            const btn = document.getElementById('save-btn');
+            if (isSavingInvoice) return;
+            if (!userId) {
+                const message = firebaseInitializationError
+                    ? `Cannot save: ${describeFirebaseError(firebaseInitializationError)}`
+                    : 'Firebase is still connecting. Please try saving again in a moment.';
+                showSaveStatus(message, 'error');
+                return;
+            }
+            const customerName = document.getElementById('client-name-input').value.trim();
+            
+            if (!customerName) {
+                showSaveStatus('Please enter a customer name before saving.', 'error');
+                return;
+            }
+
+            const invoiceData = {
+                id: Date.now().toString(),
+                date: document.getElementById('current-date').value,
+                customerName: customerName,
+                customerAddress: document.getElementById('client-address-input').value,
+                items: [],
+                unpaidBill: document.getElementById('unpaid-bill').value,
+                note: document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]').value
+            };
+
+            let subtotal = 0;
+            document.querySelectorAll('.item-row').forEach(row => {
+                const productName = row.querySelector('input[list="product-datalist"]').value;
+                const qty = row.querySelector('.qty-input').value;
+                const price = row.querySelector('.price-input').value;
+                if (productName) {
+                    invoiceData.items.push({ name: productName, qty: qty, price: price });
+                    subtotal += (parseFloat(qty) || 0) * (parseFloat(price) || 0);
+                }
+            });
+            invoiceData.grandTotal = subtotal + (parseFloat(invoiceData.unpaidBill) || 0);
+
+            isSavingInvoice = true;
+            btn.disabled = true;
+            showSaveStatus('Saving invoice to Firebase...', 'info');
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id), invoiceData);
+                localStorage.removeItem('invoiceDraft');
+
+                // Handle max limit directly in cloud by deleting oldest if exceeded
+                if (invoiceHistoryList.length >= MAX_INVOICES) {
+                    const oldest = invoiceHistoryList[invoiceHistoryList.length - 1];
+                    try {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', oldest.id));
+                    } catch (error) {
+                        console.error("Invoice saved, but old invoice cleanup failed:", error);
+                        showSaveStatus('Invoice saved, but an old invoice could not be removed.', 'error');
+                        return;
+                    }
+                }
+                showSaveStatus('Invoice saved to Firebase.', 'success');
+            } catch (error) {
+                console.error("Invoice save failed:", error);
+                showSaveStatus(`Could not save invoice: ${describeFirebaseError(error)}`, 'error');
+            } finally {
+                isSavingInvoice = false;
+                btn.disabled = false;
+            }
+        }
+
+        window.openInvoiceHistory = function() {
+            document.getElementById('invoice-history-modal').classList.remove('hidden');
+            document.getElementById('invoice-history-modal').classList.add('flex');
+            window.renderInvoiceHistory();
+        }
+
+        window.closeInvoiceHistory = function() {
+            document.getElementById('invoice-history-modal').classList.add('hidden');
+            document.getElementById('invoice-history-modal').classList.remove('flex');
+        }
+
+        window.renderInvoiceHistory = function() {
+            const tbody = document.getElementById('dashboard-invoice-history');
+            tbody.innerHTML = '';
+            if (invoiceHistoryList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">មិនទាន់មានទិន្នន័យនៅឡើយទេ</td></tr>';
+                return;
+            }
+            for (let i = 0; i < invoiceHistoryList.length; i++) {
+                const inv = invoiceHistoryList[i];
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-2 px-3 text-gray-600">${inv.date}</td>
+                        <td class="py-2 px-3 text-gray-800 font-medium">${inv.customerName}</td>
+                        <td class="py-2 px-3 text-right text-blue-600 font-bold">$${inv.grandTotal.toFixed(2)}</td>
+                        <td class="py-2 px-3 text-center">
+                            <button onclick="loadInvoice('${inv.id}')" class="text-blue-500 hover:text-blue-700 p-1 mr-2" title="View"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button>
+                            <button onclick="deleteInvoice('${inv.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        window.loadInvoice = function(id) {
+            const inv = invoiceHistoryList.find(i => i.id === id);
+            if (!inv) return;
+            document.getElementById('client-name-input').value = inv.customerName;
+            document.getElementById('client-address-input').value = inv.customerAddress;
+            document.getElementById('current-date').value = inv.date;
+            const unpaidBillInput = document.getElementById('unpaid-bill');
+            if(unpaidBillInput) unpaidBillInput.value = inv.unpaidBill;
+            const noteTextarea = document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]');
+            if(noteTextarea) noteTextarea.value = inv.note || "ទំនិញ ដែល ទិញហើយ មិនអាច ប្តូរវិញបានទេ";
+
+            const tbody = document.getElementById('invoice-items');
+            tbody.innerHTML = ''; 
+            if (inv.items.length === 0) {
+                window.addRow();
+            } else {
+                inv.items.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'item-row border-b';
+                    row.innerHTML = `
+                        <td class="py-2 px-4"><input type="text" list="product-datalist" class="editable-input w-full text-gray-800 font-medium bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none transition-colors" placeholder="វាយស្វែងរក ឬជ្រើសរើសទំនិញ..." oninput="updatePriceFromInput(this)" onchange="updatePriceFromInput(this)" value="${item.name}"></td>
+                        <td class="py-2 px-4"><input type="number" class="editable-input text-center qty-input" value="${item.qty}" min="1" onchange="calculateTotals()" onkeyup="calculateTotals()"></td>
+                        <td class="py-2 px-4"><div class="flex items-center justify-end"><span class="text-gray-500 mr-1">$</span><input type="number" class="editable-input text-right price-input" value="${item.price}" min="0" step="0.01" onchange="calculateTotals()" onkeyup="calculateTotals()"></div></td>
+                        <td class="py-2 px-4 text-right"><span class="text-gray-500 mr-1">$</span><span class="row-total font-medium">0.00</span></td>
+                        <td class="py-2 px-2 text-center no-print"><button onclick="removeRow(this)" class="text-red-500 hover:text-red-700" title="Remove Item"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            window.calculateTotals();
+            window.closeInvoiceHistory();
+        }
+
+        window.deleteInvoice = async function(id) {
+            if (!userId) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', id));
+        }
+
+        window.openCustomerDashboard = function() {
+            document.getElementById('customer-modal').classList.remove('hidden');
+            document.getElementById('customer-modal').classList.add('flex');
+            window.renderDashboardCustomers();
+        }
+
+        window.closeCustomerDashboard = function() {
+            document.getElementById('customer-modal').classList.add('hidden');
+            document.getElementById('customer-modal').classList.remove('flex');
+        }
+
+        window.renderDashboardCustomers = function() {
+            const tbody = document.getElementById('dashboard-customer-list');
+            tbody.innerHTML = '';
+            for (let i = 0; i < customerList.length; i++) {
+                const c = customerList[i];
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-2 px-3 text-gray-800">${c.name}</td>
+                        <td class="py-2 px-3 text-gray-600">${c.phone}</td>
+                        <td class="py-2 px-3 text-gray-600">${c.address}</td>
+                        <td class="py-2 px-3 text-center">
+                            <button onclick="deleteCustomer('${c.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        window.addNewCustomer = async function() {
+            if (!userId) return;
+            const name = document.getElementById('new-customer-name').value.trim();
+            const phone = document.getElementById('new-customer-phone').value.trim();
+            const address = document.getElementById('new-customer-address').value.trim();
+            if (name) {
+                const id = 'cust_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id), { name, phone, address });
+                document.getElementById('new-customer-name').value = '';
+                document.getElementById('new-customer-phone').value = '';
+                document.getElementById('new-customer-address').value = '';
+            }
+        }
+
+        window.deleteCustomer = async function(id) {
+            if (!userId) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id));
+        }
+
+        window.openProductDashboard = function() {
+            document.getElementById('product-modal').classList.remove('hidden');
+            document.getElementById('product-modal').classList.add('flex');
+            window.renderDashboardProducts();
+        }
+
+        window.closeProductDashboard = function() {
+            document.getElementById('product-modal').classList.add('hidden');
+            document.getElementById('product-modal').classList.remove('flex');
+        }
+
+        window.renderDashboardProducts = function() {
+            const tbody = document.getElementById('dashboard-product-list');
+            tbody.innerHTML = '';
+            for (let i = 0; i < productList.length; i++) {
+                const p = productList[i];
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-2 px-3 text-gray-800">${p.name}</td>
+                        <td class="py-2 px-3 text-right text-gray-600">$${p.price.toFixed(2)}</td>
+                        <td class="py-2 px-3 text-center">
+                            <button onclick="deleteProduct('${p.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        window.addNewProduct = async function() {
+            if (!userId) return;
+            const name = document.getElementById('new-product-name').value.trim();
+            const price = parseFloat(document.getElementById('new-product-price').value);
+            if (name && !isNaN(price) && price >= 0) {
+                const id = 'prod_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'products', id), { name, price });
+                document.getElementById('new-product-name').value = '';
+                document.getElementById('new-product-price').value = '';
+            }
+        }
+
+        window.deleteProduct = async function(id) {
+            if (!userId) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'products', id));
+        }
+
+        window.backupData = function() {
+            const allData = { customerList, productList, invoiceHistoryList, exportDate: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Invoice_Backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            const btn = document.getElementById('backup-btn');
+            if (btn) {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `✓ បាន Backup`;
+                btn.classList.replace('bg-orange-500', 'bg-green-600');
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 3000);
+            }
+        }
+
+        // Kick off initialization
+        initApp();
+    </script>
+</body>
+</html>
