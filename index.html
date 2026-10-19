@@ -99,6 +99,7 @@
             </svg>
             Print
         </button>
+        <p id="save-status" class="w-full text-right text-sm text-gray-600" role="status" aria-live="polite">Connecting to Firebase...</p>
     </div>
 
     <!-- Main Invoice Container -->
@@ -301,12 +302,38 @@
         };
         
         let app, auth, db;
+        let firebaseInitializationError = null;
+        let isSavingInvoice = false;
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
         } catch(e) {
             console.error("Firebase init error", e);
+            firebaseInitializationError = e;
+        }
+
+        function showSaveStatus(message, type = 'info') {
+            const status = document.getElementById('save-status');
+            if (!status) return;
+            const colors = {
+                info: 'text-gray-600',
+                success: 'text-green-700',
+                error: 'text-red-600'
+            };
+            status.textContent = message;
+            status.className = `w-full text-right text-sm ${colors[type]}`;
+        }
+
+        function describeFirebaseError(error) {
+            const code = error?.code || 'unknown';
+            if (code === 'auth/operation-not-allowed') {
+                return 'Anonymous sign-in is disabled. Enable it in Firebase Authentication settings.';
+            }
+            if (code === 'permission-denied' || code === 'firestore/permission-denied') {
+                return 'Firestore denied the request. Check the Firestore security rules for this user and path.';
+            }
+            return `Firebase error (${code}): ${error?.message || 'Unknown error'}`;
         }
 
         let userId = null;
@@ -317,7 +344,10 @@
 
         // Initialize App & Authentication
         async function initApp() {
-            if (!auth) return;
+            if (!auth || !db) {
+                showSaveStatus('Firebase could not initialize. Check the Firebase configuration and reload.', 'error');
+                return;
+            }
             try {
                 if (typeof __initial_auth_token !== 'undefined') {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -339,8 +369,11 @@
                 // Event listeners for auto-save draft
                 document.getElementById('invoice-container').addEventListener('input', window.autoSaveDraft);
                 document.getElementById('invoice-container').addEventListener('change', window.autoSaveDraft);
+                showSaveStatus('Connected to Firebase. Invoice is ready to save.', 'success');
             } catch (error) {
                 console.error("Authentication failed:", error);
+                firebaseInitializationError = error;
+                showSaveStatus(`Firebase connection failed: ${describeFirebaseError(error)}`, 'error');
             }
         }
 
@@ -568,15 +601,19 @@
         }
 
         window.saveCurrentInvoice = async function() {
-            if (!userId) return;
-            const customerName = document.getElementById('client-name-input').value;
             const btn = document.getElementById('save-btn');
+            if (isSavingInvoice) return;
+            if (!userId) {
+                const message = firebaseInitializationError
+                    ? `Cannot save: ${describeFirebaseError(firebaseInitializationError)}`
+                    : 'Firebase is still connecting. Please try saving again in a moment.';
+                showSaveStatus(message, 'error');
+                return;
+            }
+            const customerName = document.getElementById('client-name-input').value.trim();
             
             if (!customerName) {
-                const originalHTML = btn.innerHTML;
-                btn.innerHTML = `⚠️ បញ្ចូលឈ្មោះអតិថិជនសិន`;
-                btn.classList.replace('bg-teal-600', 'bg-red-500');
-                setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.replace('bg-red-500', 'bg-teal-600'); }, 2000);
+                showSaveStatus('Please enter a customer name before saving.', 'error');
                 return;
             }
 
@@ -602,20 +639,32 @@
             });
             invoiceData.grandTotal = subtotal + (parseFloat(invoiceData.unpaidBill) || 0);
 
-            // Save to Cloud
-            await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id), invoiceData);
-            localStorage.removeItem('invoiceDraft');
-            
-            // Handle max limit directly in cloud by deleting oldest if exceeded
-            if (invoiceHistoryList.length >= MAX_INVOICES) {
-                const oldest = invoiceHistoryList[invoiceHistoryList.length - 1];
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', oldest.id));
+            isSavingInvoice = true;
+            btn.disabled = true;
+            showSaveStatus('Saving invoice to Firebase...', 'info');
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id), invoiceData);
+                localStorage.removeItem('invoiceDraft');
+
+                // Handle max limit directly in cloud by deleting oldest if exceeded
+                if (invoiceHistoryList.length >= MAX_INVOICES) {
+                    const oldest = invoiceHistoryList[invoiceHistoryList.length - 1];
+                    try {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', oldest.id));
+                    } catch (error) {
+                        console.error("Invoice saved, but old invoice cleanup failed:", error);
+                        showSaveStatus('Invoice saved, but an old invoice could not be removed.', 'error');
+                        return;
+                    }
+                }
+                showSaveStatus('Invoice saved to Firebase.', 'success');
+            } catch (error) {
+                console.error("Invoice save failed:", error);
+                showSaveStatus(`Could not save invoice: ${describeFirebaseError(error)}`, 'error');
+            } finally {
+                isSavingInvoice = false;
+                btn.disabled = false;
             }
-            
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = `✓ បានរក្សាទុក`;
-            btn.classList.replace('bg-teal-600', 'bg-green-600');
-            setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.replace('bg-green-600', 'bg-teal-600'); }, 2000);
         }
 
         window.openInvoiceHistory = function() {
