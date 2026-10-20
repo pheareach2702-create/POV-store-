@@ -27,7 +27,20 @@
             background-color: #f9fafb;
             outline: none;
         }
+        #pos-receipt {
+            display: none;
+        }
         
+        @page receipt58 {
+            size: 58mm auto;
+            margin: 2mm;
+        }
+
+        @page receipt80 {
+            size: 80mm auto;
+            margin: 3mm;
+        }
+
         /* Specific Print Styles */
         @media print {
             body {
@@ -54,7 +67,66 @@
             ::-webkit-input-placeholder { color: transparent; }
             :-moz-placeholder { color: transparent; }
             ::-moz-placeholder { color: transparent; }
-            :-ms-input-placeholder { color: transparent; }
+            :-ms-input-placeholder { color: transparent;             }
+
+            #pos-receipt {
+                display: none;
+            }
+
+            body.print-receipt {
+                background: white;
+                padding: 0;
+            }
+            body.print-receipt.receipt-58 {
+                page: receipt58;
+            }
+            body.print-receipt.receipt-80 {
+                page: receipt80;
+            }
+            body.print-receipt #invoice-container {
+                display: none !important;
+            }
+            body.print-receipt #pos-receipt {
+                display: block !important;
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                padding: 0;
+                color: #000;
+                background: #fff;
+                box-shadow: none;
+                font: 10pt/1.35 Arial, sans-serif;
+            }
+            body.print-receipt #pos-receipt h1 {
+                margin: 0 0 8px;
+                text-align: center;
+                font-size: 15pt;
+            }
+            body.print-receipt #pos-receipt table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+            body.print-receipt #pos-receipt th,
+            body.print-receipt #pos-receipt td {
+                padding: 3px 0;
+                border-bottom: 1px dashed #777;
+                overflow-wrap: anywhere;
+            }
+            body.print-receipt #pos-receipt .receipt-right {
+                text-align: right;
+            }
+            body.print-receipt #pos-receipt .receipt-center {
+                text-align: center;
+            }
+            body.print-receipt #pos-receipt .receipt-total {
+                font-weight: 700;
+                font-size: 12pt;
+            }
+            body.print-receipt #pos-receipt .receipt-footer {
+                margin-top: 8px;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -87,6 +159,12 @@
             </svg>
             ទំនិញ
         </button>
+        <button onclick="openExpenseDashboard()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            ចំណាយ
+        </button>
+        <button onclick="openBusinessReport()" class="bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            Reports
+        </button>
         <button onclick="backupData()" id="backup-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow flex items-center transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -98,6 +176,16 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Print
+        </button>
+        <label class="flex items-center gap-1 text-sm text-gray-700">
+            <span>Receipt width</span>
+            <select id="receipt-width" class="border rounded px-2 py-2">
+                <option value="80">80 mm</option>
+                <option value="58">58 mm</option>
+            </select>
+        </label>
+        <button onclick="printPosReceipt()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded shadow">
+            Print POS Receipt
         </button>
         <p id="save-status" class="w-full text-right text-sm text-gray-600" role="status" aria-live="polite">Connecting to Firebase...</p>
     </div>
@@ -159,18 +247,38 @@
             <div class="w-full md:w-1/3">
                 <div class="flex justify-between py-2 border-b">
                     <span class="font-semibold text-gray-600">Subtotal:</span>
-                    <span class="font-medium text-gray-800">\$<span id="subtotal">0.00</span></span>
+                    <span class="font-medium text-gray-800">$<span id="subtotal">0.00</span></span>
                 </div>
                 <div class="flex justify-between py-2 border-b items-center">
                     <span class="font-semibold text-gray-600">Unpaid Bill:</span>
                     <div class="flex items-center text-gray-800 font-medium justify-end">
-                        <span class="mr-1">\$</span>
+                        <span class="mr-1">$</span>
                         <input type="number" id="unpaid-bill" class="editable-input text-right w-24 m-0 p-0" value="0.00" min="0" step="0.01" onchange="calculateTotals()" onkeyup="calculateTotals()">
                     </div>
                 </div>
                 <div class="flex justify-between py-3 border-b-2 border-gray-800">
                     <span class="font-bold text-gray-900 text-lg">Grand Total:</span>
-                    <span class="font-bold text-blue-600 text-lg">\$<span id="grand-total">0.00</span></span>
+                    <span class="font-bold text-blue-600 text-lg">$<span id="grand-total">0.00</span></span>
+                </div>
+                <div class="flex justify-between py-2 border-b items-center gap-2 no-print">
+                    <label for="usd-khr-rate" class="text-sm font-semibold text-gray-600">Daily rate (KHR / USD)</label>
+                    <input type="number" id="usd-khr-rate" class="border rounded px-2 py-1 text-right w-28" min="1" step="1" value="4100" onchange="saveExchangeRate(); calculateTotals()" oninput="calculateTotals()">
+                </div>
+                <div class="flex justify-between py-2 border-b">
+                    <span class="font-semibold text-gray-600">Grand Total (KHR) <span class="block text-xs font-normal">1 USD = ៛<span id="exchange-rate-display">4,100</span></span></span>
+                    <span id="grand-total-khr" class="font-bold text-gray-800">៛0</span>
+                </div>
+                <div class="py-3 border-b no-print">
+                    <label for="cash-received" class="block text-sm font-semibold text-gray-600 mb-1">Cash Received</label>
+                    <div class="flex justify-end gap-2">
+                        <input type="number" id="cash-received" class="border rounded px-2 py-1 text-right w-32" min="0" step="0.01" value="0" oninput="calculateTotals()">
+                        <select id="cash-currency" class="border rounded px-2 py-1" onchange="calculateTotals()">
+                            <option value="USD">USD ($)</option>
+                            <option value="KHR">KHR (៛)</option>
+                        </select>
+                    </div>
+                    <p class="text-xs text-gray-600 text-right mt-2">Balance due: <strong id="balance-due-usd">$0.00</strong> / <strong id="balance-due-khr">៛0</strong></p>
+                    <p class="text-xs text-gray-500 text-right mt-1">Change due: <strong id="change-due-usd">$0.00</strong> / <strong id="change-due-khr">៛0</strong></p>
                 </div>
             </div>
         </div>
@@ -183,9 +291,11 @@
 
     </div>
 
+    <div id="pos-receipt" aria-hidden="true"></div>
+
     <!-- Product Dashboard Modal (Hidden by default) -->
     <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
-        <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Product Dashboard</h2>
                 <button onclick="closeProductDashboard()" class="text-gray-500 hover:text-gray-700">
@@ -193,24 +303,52 @@
                 </button>
             </div>
             
-            <div class="mb-4 flex gap-2">
-                <input type="text" id="new-product-name" placeholder="Product Name" class="border rounded px-3 py-2 flex-1 outline-none focus:border-blue-500">
-                <input type="number" id="new-product-price" placeholder="Price (\$)" class="border rounded px-3 py-2 w-24 outline-none focus:border-blue-500" min="0" step="0.01">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4">
+                <input type="text" id="new-product-name" placeholder="Product Name" class="border rounded px-3 py-2 outline-none focus:border-blue-500">
+                <input type="number" id="new-product-price" placeholder="Price ($)" class="border rounded px-3 py-2 outline-none focus:border-blue-500" min="0" step="0.01">
+                <input type="number" id="new-product-stock" placeholder="Opening stock" class="border rounded px-3 py-2 outline-none focus:border-blue-500" min="0" step="1" value="0">
+                <input type="number" id="new-product-low-stock" placeholder="Low-stock alert" class="border rounded px-3 py-2 outline-none focus:border-blue-500" min="0" step="1" value="5">
                 <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded">Add</button>
             </div>
 
+            <div class="flex flex-wrap gap-2 mb-3">
+                <button onclick="exportProductsCsv()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded">Export products CSV</button>
+                <button onclick="exportStockMovementsCsv()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-3 py-2 rounded">Export stock history CSV</button>
+                <label class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-2 rounded cursor-pointer">
+                    Import products CSV
+                    <input type="file" accept=".csv,text/csv" class="hidden" onchange="importProductsCsv(event)">
+                </label>
+                <p class="w-full text-sm text-gray-500">Excel-compatible CSV columns: Name, Price, Stock, LowStockThreshold. Import updates matching product names.</p>
+            </div>
+            <p id="inventory-status" class="text-sm text-gray-600 mb-3" role="status" aria-live="polite"></p>
             <div class="max-h-60 overflow-y-auto border rounded">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-2 px-3 border-b text-gray-700">Product Name</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Product</th>
                             <th class="py-2 px-3 w-24 text-right border-b text-gray-700">Price</th>
-                            <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
+                            <th class="py-2 px-3 w-20 text-right border-b text-gray-700">In Stock</th>
+                            <th class="py-2 px-3 w-44 text-center border-b text-gray-700">Stock In / Out</th>
+                            <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Delete</th>
                         </tr>
                     </thead>
                     <tbody id="dashboard-product-list">
                         <!-- Populated by JS -->
                     </tbody>
+                </table>
+            </div>
+            <h3 class="font-semibold text-gray-800 mt-5 mb-2">Recent stock movements</h3>
+            <div class="max-h-48 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">Date</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Product</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Movement</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-movement-list"></tbody>
                 </table>
             </div>
         </div>
@@ -233,13 +371,16 @@
                 <button onclick="addNewCustomer()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded transition">បន្ថែម</button>
             </div>
 
-            <div class="max-h-60 overflow-y-auto border rounded">
+            <div class="max-h-60 overflow-auto border rounded">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
                             <th class="py-2 px-3 border-b text-gray-700">ឈ្មោះអតិថិជន</th>
                             <th class="py-2 px-3 border-b text-gray-700">លេខទូរសព្ទ</th>
                             <th class="py-2 px-3 border-b text-gray-700">អាសយដ្ឋាន</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Balance (USD)</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Unpaid bills</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Record payment</th>
                             <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
                         </tr>
                     </thead>
@@ -248,6 +389,7 @@
                     </tbody>
                 </table>
             </div>
+            <p id="customer-payment-status" class="mt-3 text-sm text-gray-600" role="status" aria-live="polite"></p>
         </div>
     </div>
 
@@ -279,6 +421,105 @@
         </div>
     </div>
 
+    <!-- Expense Dashboard Modal -->
+    <div id="expense-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Business Expenses</h2>
+                <button onclick="closeExpenseDashboard()" class="text-gray-500 hover:text-gray-700" aria-label="Close expenses">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="rounded-lg bg-rose-50 p-4 mb-4">
+                <p class="text-sm text-rose-700">Expenses this month</p>
+                <p id="monthly-expense-total" class="text-2xl font-bold text-rose-800">$0.00</p>
+            </div>
+
+            <form id="expense-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4" onsubmit="addExpense(event)">
+                <label class="text-sm text-gray-700">Date
+                    <input id="expense-date" type="date" required class="mt-1 w-full border rounded px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">Amount ($)
+                    <input id="expense-amount" type="number" min="0.01" step="0.01" required placeholder="0.00" class="mt-1 w-full border rounded px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">Category
+                    <select id="expense-category" required class="mt-1 w-full border rounded px-3 py-2">
+                        <option value="Supplies">Supplies</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Salary">Salary</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label class="text-sm text-gray-700">Description
+                    <input id="expense-description" type="text" maxlength="120" required placeholder="What was this expense for?" class="mt-1 w-full border rounded px-3 py-2">
+                </label>
+                <div class="md:col-span-2">
+                    <button id="add-expense-btn" type="submit" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2 rounded">Add Expense</button>
+                </div>
+            </form>
+            <p id="expense-status" class="text-sm text-gray-600 mb-3" role="status" aria-live="polite"></p>
+
+            <div class="max-h-72 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">Date</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Category / Description</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Amount</th>
+                            <th class="py-2 px-3 border-b text-center text-gray-700">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Reports Modal -->
+    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Business Report</h2>
+                <button onclick="closeBusinessReport()" class="text-gray-500 hover:text-gray-700" aria-label="Close report">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-end gap-3 mb-5">
+                <label class="text-sm text-gray-700">From
+                    <input id="report-start-date" type="date" onchange="renderBusinessReport()" class="mt-1 border rounded px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">To
+                    <input id="report-end-date" type="date" onchange="renderBusinessReport()" class="mt-1 border rounded px-3 py-2">
+                </label>
+                <button onclick="exportBusinessReportCsv()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">Export report CSV</button>
+            </div>
+            <p id="report-status" class="text-sm text-red-600 mb-3" role="status" aria-live="polite"></p>
+            <p class="text-xs text-gray-500 mb-3">Net after expenses is sales minus recorded expenses; product costs, taxes, and payment collection are not included.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="rounded-lg bg-blue-50 p-4"><p class="text-sm text-blue-700">Product sales</p><p id="report-sales" class="text-xl font-bold text-blue-900">$0.00</p></div>
+                <div class="rounded-lg bg-rose-50 p-4"><p class="text-sm text-rose-700">Expenses</p><p id="report-expenses" class="text-xl font-bold text-rose-900">$0.00</p></div>
+                <div class="rounded-lg bg-emerald-50 p-4"><p class="text-sm text-emerald-700">Sales minus expenses</p><p id="report-net" class="text-xl font-bold text-emerald-900">$0.00</p></div>
+                <div class="rounded-lg bg-amber-50 p-4"><p class="text-sm text-amber-700">Carried unpaid bill amounts</p><p id="report-unpaid" class="text-xl font-bold text-amber-900">$0.00</p></div>
+            </div>
+            <h3 class="font-semibold text-gray-800 mb-2">Best-selling products</h3>
+            <div class="max-h-72 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">Product</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Quantity sold</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Sales</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-product-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Datalists for Autocomplete Search -->
     <datalist id="product-datalist"></datalist>
     <datalist id="customer-datalist"></datalist>
@@ -287,19 +528,19 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, runTransaction, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Hardcoded Firebase Configuration from your project setup
-      const appId = 'pov-store-app';
-      const firebaseConfig = {
-    apiKey: "AIzaSyAB7fHSgZl2T-b0QQPALWGnr1pLufBUnNw",
-    authDomain: "seller-2d87c.firebaseapp.com",
-    projectId: "seller-2d87c",
-    storageBucket: "seller-2d87c.firebasestorage.app",
-    messagingSenderId: "422003036191",
-    appId: "1:422003036191:web:5842dd71e3a7ae9441052a",
-    measurementId: "G-226J01X1J6"
-  };
+        const appId = 'pov-store-app';
+        const firebaseConfig = {
+            apiKey: "AIzaSyAB7fHSgZl2T-b0QQPALWGnr1pLufBUnNw",
+            authDomain: "seller-2d87c.firebaseapp.com",
+            projectId: "seller-2d87c",
+            storageBucket: "seller-2d87c.firebasestorage.app",
+            messagingSenderId: "422003036191",
+            appId: "1:422003036191:web:5842dd71e3a7ae9441052a",
+            measurementId: "G-226J01X1J6"
+        };
         
         let app, auth, db;
         let firebaseInitializationError = null;
@@ -338,9 +579,64 @@
 
         let userId = null;
         let customerList = [];
+        let isCustomerListLoaded = false;
+        let customerListLoadError = null;
         let productList = [];
+        let stockMovementList = [];
+        let isProductListLoaded = false;
         let invoiceHistoryList = [];
+        let expenseList = [];
         const MAX_INVOICES = 500;
+
+        function getLocalDateKey(date = new Date()) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getDailyExchangeRate() {
+            return Number(document.getElementById('usd-khr-rate').value);
+        }
+
+        function calculatePaymentSummary(grandTotal) {
+            const rate = getDailyExchangeRate();
+            const tenderInput = document.getElementById('cash-received');
+            const tenderAmount = Number(tenderInput.value || 0);
+            const currency = document.getElementById('cash-currency').value;
+            if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(tenderAmount) || tenderAmount < 0 ||
+                !Number.isFinite(grandTotal) || grandTotal < 0) {
+                return null;
+            }
+            const tenderUsd = currency === 'KHR' ? tenderAmount / rate : tenderAmount;
+            const paymentAppliedUsd = Math.round(Math.min(grandTotal, tenderUsd) * 100) / 100;
+            const changeDueUsd = Math.round(Math.max(0, tenderUsd - grandTotal) * 100) / 100;
+            return {
+                rate,
+                currency,
+                tenderAmount,
+                tenderUsd,
+                paymentAppliedUsd,
+                balanceDueUsd: Math.round(Math.max(0, grandTotal - paymentAppliedUsd) * 100) / 100,
+                changeDueUsd,
+                changeDueKhr: Math.round(changeDueUsd * rate)
+            };
+        }
+
+        window.saveExchangeRate = function() {
+            const rate = getDailyExchangeRate();
+            if (!Number.isFinite(rate) || rate <= 0) {
+                showSaveStatus('Enter a valid USD to KHR exchange rate greater than zero.', 'error');
+                return;
+            }
+            localStorage.setItem(`usdKhrRate_${getLocalDateKey()}`, String(rate));
+            window.calculateTotals();
+        }
+
+        function loadDailyExchangeRate() {
+            const savedRate = Number(localStorage.getItem(`usdKhrRate_${getLocalDateKey()}`));
+            document.getElementById('usd-khr-rate').value = Number.isFinite(savedRate) && savedRate > 0 ? String(savedRate) : '4100';
+        }
 
         // Initialize App & Authentication
         async function initApp() {
@@ -362,9 +658,11 @@
                 // Start listening to real-time cloud data
                 initDataListeners();
                 
+                document.getElementById('current-date').valueAsDate = new Date();
+                loadDailyExchangeRate();
                 // Load unsaved draft if exists
                 loadDraft();
-                document.getElementById('current-date').valueAsDate = new Date();
+                window.calculateTotals();
                 
                 // Event listeners for auto-save draft
                 document.getElementById('invoice-container').addEventListener('input', window.autoSaveDraft);
@@ -414,17 +712,37 @@
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'products'), (snapshot) => {
                 productList = [];
                 snapshot.forEach(d => productList.push({ id: d.id, ...d.data() }));
+                isProductListLoaded = true;
                 updateProductDatalist();
-                if(document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
+                if (document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
             }, (error) => console.error(error));
+
+            onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'stockMovements'), (snapshot) => {
+                stockMovementList = [];
+                snapshot.forEach(d => stockMovementList.push({ id: d.id, ...d.data() }));
+                stockMovementList.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+                if (document.getElementById('product-modal').classList.contains('flex')) {
+                    window.renderStockMovements();
+                }
+            }, (error) => {
+                console.error("Stock movement listener failed:", error);
+                showInventoryStatus(`Could not load stock movements: ${describeFirebaseError(error)}`, 'error');
+            });
 
             // Watch Customers Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'customers'), (snapshot) => {
                 customerList = [];
                 snapshot.forEach(d => customerList.push({ id: d.id, ...d.data() }));
+                isCustomerListLoaded = true;
+                customerListLoadError = null;
                 updateCustomerDatalist();
                 if(document.getElementById('customer-modal').classList.contains('flex')) window.renderDashboardCustomers();
-            }, (error) => console.error(error));
+            }, (error) => {
+                console.error("Customer listener failed:", error);
+                isCustomerListLoaded = true;
+                customerListLoadError = error;
+                document.getElementById('customer-payment-status').textContent = `Could not load customers: ${describeFirebaseError(error)}`;
+            });
 
             // Watch Invoices Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'invoices'), (snapshot) => {
@@ -432,7 +750,21 @@
                 snapshot.forEach(d => invoiceHistoryList.push({ id: d.id, ...d.data() }));
                 invoiceHistoryList.sort((a, b) => b.id.localeCompare(a.id)); // Sort newest first
                 if(document.getElementById('invoice-history-modal').classList.contains('flex')) window.renderInvoiceHistory();
+                if (document.getElementById('customer-modal').classList.contains('flex')) window.renderDashboardCustomers();
+                if (document.getElementById('report-modal').classList.contains('flex')) window.renderBusinessReport();
             }, (error) => console.error(error));
+
+            // Watch Business Expenses Collection
+            onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'expenses'), (snapshot) => {
+                expenseList = [];
+                snapshot.forEach(d => expenseList.push({ id: d.id, ...d.data() }));
+                expenseList.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id.localeCompare(a.id));
+                if (document.getElementById('expense-modal').classList.contains('flex')) window.renderExpenses();
+                if (document.getElementById('report-modal').classList.contains('flex')) window.renderBusinessReport();
+            }, (error) => {
+                console.error("Expense listener failed:", error);
+                showExpenseStatus(`Could not load expenses: ${describeFirebaseError(error)}`, 'error');
+            });
         }
 
         function updateProductDatalist() {
@@ -455,6 +787,8 @@
                 customerAddress: document.getElementById('client-address-input').value,
                 date: document.getElementById('current-date').value,
                 unpaidBill: document.getElementById('unpaid-bill').value,
+                cashReceived: document.getElementById('cash-received').value,
+                cashCurrency: document.getElementById('cash-currency').value,
                 note: document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]').value,
                 items: []
             };
@@ -479,6 +813,8 @@
                     
                     const unpaidBillInput = document.getElementById('unpaid-bill');
                     if(unpaidBillInput) unpaidBillInput.value = draft.unpaidBill || '0.00';
+                    document.getElementById('cash-received').value = draft.cashReceived || '0';
+                    document.getElementById('cash-currency').value = draft.cashCurrency === 'KHR' ? 'KHR' : 'USD';
                     
                     const noteTextarea = document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]');
                     if(noteTextarea) noteTextarea.value = draft.note || "ទំនិញ ដែល ទិញហើយ មិនអាច ប្តូរវិញបានទេ";
@@ -593,11 +929,90 @@
             });
             const unpaidBillInput = document.getElementById('unpaid-bill');
             const unpaidBill = unpaidBillInput ? (parseFloat(unpaidBillInput.value) || 0) : 0;
-            const grandTotal = subtotal + unpaidBill;
+            const grandTotal = Math.round((subtotal + unpaidBill) * 100) / 100;
 
             document.getElementById('subtotal').textContent = subtotal.toFixed(2);
             document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
+            const payment = calculatePaymentSummary(grandTotal);
+            if (payment) {
+                document.getElementById('grand-total-khr').textContent = `៛${Math.round(grandTotal * payment.rate).toLocaleString()}`;
+                document.getElementById('exchange-rate-display').textContent = payment.rate.toLocaleString();
+                document.getElementById('change-due-usd').textContent = `$${payment.changeDueUsd.toFixed(2)}`;
+                document.getElementById('change-due-khr').textContent = `៛${payment.changeDueKhr.toLocaleString()}`;
+                document.getElementById('balance-due-usd').textContent = `$${payment.balanceDueUsd.toFixed(2)}`;
+                document.getElementById('balance-due-khr').textContent = `៛${Math.round(payment.balanceDueUsd * payment.rate).toLocaleString()}`;
+            } else {
+                document.getElementById('grand-total-khr').textContent = 'Check exchange rate';
+                document.getElementById('change-due-usd').textContent = '--';
+                document.getElementById('change-due-khr').textContent = '--';
+                document.getElementById('balance-due-usd').textContent = '--';
+                document.getElementById('balance-due-khr').textContent = '--';
+            }
             window.autoSaveDraft();
+        }
+
+        window.printPosReceipt = function() {
+            const grandTotal = Number(document.getElementById('grand-total').textContent) || 0;
+            const payment = calculatePaymentSummary(grandTotal);
+            if (!payment) {
+                showSaveStatus('Enter a valid USD to KHR exchange rate before printing.', 'error');
+                return;
+            }
+
+            const receipt = document.getElementById('pos-receipt');
+            receipt.replaceChildren();
+            const addText = (tag, text, className = '') => {
+                const element = document.createElement(tag);
+                element.textContent = text;
+                if (className) element.className = className;
+                receipt.appendChild(element);
+                return element;
+            };
+            addText('h1', 'INVOICE');
+            addText('p', `Customer: ${document.getElementById('client-name-input').value.trim() || '-'}`);
+            addText('p', `Date: ${document.getElementById('current-date').value || '-'}`);
+
+            const table = document.createElement('table');
+            const header = table.createTHead().insertRow();
+            ['Item', 'Qty', 'Total'].forEach((label, index) => {
+                const cell = document.createElement('th');
+                cell.textContent = label;
+                if (index > 0) cell.className = 'receipt-right';
+                header.appendChild(cell);
+            });
+            const body = table.createTBody();
+            document.querySelectorAll('.item-row').forEach(row => {
+                const name = row.querySelector('input[list="product-datalist"]').value.trim();
+                if (!name) return;
+                const quantity = Number(row.querySelector('.qty-input').value) || 0;
+                const price = Number(row.querySelector('.price-input').value) || 0;
+                const receiptRow = body.insertRow();
+                [name, String(quantity), `$${(quantity * price).toFixed(2)}`].forEach((value, index) => {
+                    const cell = receiptRow.insertCell();
+                    cell.textContent = value;
+                    if (index > 0) cell.className = 'receipt-right';
+                });
+            });
+            receipt.appendChild(table);
+            const unpaidBill = Number(document.getElementById('unpaid-bill').value) || 0;
+            if (unpaidBill > 0) addText('p', `Unpaid bill: $${unpaidBill.toFixed(2)}`, 'receipt-right');
+            addText('p', `Grand total: $${grandTotal.toFixed(2)}`, 'receipt-total receipt-right');
+            addText('p', `Grand total: ៛${Math.round(grandTotal * payment.rate).toLocaleString()}`, 'receipt-right');
+            addText('p', `Rate: ៛${payment.rate.toLocaleString()} / $1`, 'receipt-right');
+            addText('p', `Cash received: ${payment.currency === 'KHR' ? `៛${payment.tenderAmount.toLocaleString()}` : `$${payment.tenderAmount.toFixed(2)}`}`, 'receipt-right');
+            addText('p', `Balance due: $${payment.balanceDueUsd.toFixed(2)} / ៛${Math.round(payment.balanceDueUsd * payment.rate).toLocaleString()}`, 'receipt-right');
+            addText('p', `Change: $${payment.changeDueUsd.toFixed(2)} / ៛${payment.changeDueKhr.toLocaleString()}`, 'receipt-right');
+            addText('p', 'Thank you!', 'receipt-footer');
+
+            const selectedWidth = document.getElementById('receipt-width').value;
+            const bodyElement = document.body;
+            const clearReceiptPrintMode = () => {
+                bodyElement.classList.remove('print-receipt', 'receipt-58', 'receipt-80');
+            };
+            bodyElement.classList.remove('receipt-58', 'receipt-80');
+            bodyElement.classList.add('print-receipt', `receipt-${selectedWidth}`);
+            window.addEventListener('afterprint', clearReceiptPrintMode, { once: true });
+            window.print();
         }
 
         window.saveCurrentInvoice = async function() {
@@ -614,6 +1029,19 @@
             
             if (!customerName) {
                 showSaveStatus('Please enter a customer name before saving.', 'error');
+                return;
+            }
+            if (!isCustomerListLoaded) {
+                showSaveStatus('Please wait for the customer list to load before saving this invoice.', 'error');
+                return;
+            }
+            if (customerListLoadError) {
+                showSaveStatus(`Cannot save because customers could not be loaded: ${describeFirebaseError(customerListLoadError)}`, 'error');
+                return;
+            }
+            const exchangeRate = getDailyExchangeRate();
+            if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+                showSaveStatus('Enter a valid USD to KHR exchange rate greater than zero.', 'error');
                 return;
             }
 
@@ -637,30 +1065,125 @@
                     subtotal += (parseFloat(qty) || 0) * (parseFloat(price) || 0);
                 }
             });
-            invoiceData.grandTotal = subtotal + (parseFloat(invoiceData.unpaidBill) || 0);
+            invoiceData.grandTotal = Math.round((subtotal + (parseFloat(invoiceData.unpaidBill) || 0)) * 100) / 100;
+            if (!Number.isFinite(invoiceData.grandTotal) || invoiceData.grandTotal < 0) {
+                showSaveStatus('Invoice total must be zero or greater.', 'error');
+                return;
+            }
+            const payment = calculatePaymentSummary(invoiceData.grandTotal);
+            if (!payment) {
+                showSaveStatus('Enter a valid exchange rate and cash amount before saving.', 'error');
+                return;
+            }
+            const matchingCustomer = customerList.find(customer =>
+                (customer.name || '').trim().toLowerCase() === customerName.toLowerCase()
+            );
+            const customerId = matchingCustomer?.id || `cust_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            invoiceData.customerId = customerId;
+            invoiceData.exchangeRate = payment.rate;
+            invoiceData.cashReceived = payment.tenderAmount;
+            invoiceData.cashCurrency = payment.currency;
+            invoiceData.paymentAppliedUsd = payment.paymentAppliedUsd;
+            invoiceData.balanceDueUsd = payment.balanceDueUsd;
+            invoiceData.changeDueUsd = payment.changeDueUsd;
+            invoiceData.changeDueKhr = payment.changeDueKhr;
+            if (invoiceData.items.length > 0 && !isProductListLoaded) {
+                showSaveStatus('Please wait for the product and stock list to load before saving this invoice.', 'error');
+                return;
+            }
 
             isSavingInvoice = true;
             btn.disabled = true;
             showSaveStatus('Saving invoice to Firebase...', 'info');
             try {
-                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id), invoiceData);
+                const productsByName = new Map(productList.map(product => [product.name.trim().toLowerCase(), product]));
+                const saleQuantities = new Map();
+                invoiceData.items.forEach(item => {
+                    const product = productsByName.get(item.name.trim().toLowerCase());
+                    if (!product || !Number.isInteger(product.stock) || product.stock < 0) return;
+                    const quantity = Number(item.qty);
+                    if (!Number.isInteger(quantity) || quantity <= 0) {
+                        throw new Error(`Quantity for ${product.name} must be a whole number to update stock.`);
+                    }
+                    const existing = saleQuantities.get(product.id);
+                    saleQuantities.set(product.id, {
+                        product,
+                        quantity: (existing?.quantity || 0) + quantity
+                    });
+                });
+
+                const invoiceRef = doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id);
+                const customerRef = doc(db, 'artifacts', appId, 'users', userId, 'customers', customerId);
+                await runTransaction(db, async transaction => {
+                    const sales = Array.from(saleQuantities.values());
+                    const [customerSnapshot, ...productSnapshots] = await Promise.all([
+                        transaction.get(customerRef),
+                        ...sales.map(({ product }) =>
+                            transaction.get(doc(db, 'artifacts', appId, 'users', userId, 'products', product.id))
+                        )
+                    ]);
+                    const saleUpdates = sales.map(({ product, quantity }, index) => {
+                        const snapshot = productSnapshots[index];
+                        if (!snapshot.exists()) throw new Error(`Product "${product.name}" no longer exists.`);
+                        const currentStock = snapshot.data().stock;
+                        if (!Number.isInteger(currentStock) || currentStock < quantity) {
+                            throw new Error(`Not enough stock for ${product.name}. Available: ${Number.isInteger(currentStock) ? currentStock : 0}.`);
+                        }
+                        return {
+                            product,
+                            quantity,
+                            nextStock: currentStock - quantity
+                        };
+                    });
+
+                    const savedInvoiceData = {
+                        ...invoiceData,
+                        stockDeducted: saleUpdates.length > 0,
+                        stockAdjustments: saleUpdates.map(({ product, quantity }) => ({
+                            productId: product.id,
+                            productName: product.name,
+                            quantity
+                        }))
+                    };
+                    const customerData = customerSnapshot.exists() ? customerSnapshot.data() : {};
+                    transaction.set(customerRef, {
+                        name: customerData.name || customerName,
+                        phone: customerData.phone || '',
+                        address: customerData.address || invoiceData.customerAddress || '',
+                        balanceUsd: Math.round(((Number(customerData.balanceUsd) || 0) + payment.balanceDueUsd) * 100) / 100,
+                        totalPaymentsUsd: Math.round(((Number(customerData.totalPaymentsUsd) || 0) + payment.paymentAppliedUsd) * 100) / 100,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                    transaction.set(invoiceRef, savedInvoiceData);
+                    saleUpdates.forEach(({ product, quantity, nextStock }) => {
+                        const productRef = doc(db, 'artifacts', appId, 'users', userId, 'products', product.id);
+                        const movementRef = doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', `${invoiceData.id}_${product.id}`);
+                        transaction.update(productRef, { stock: nextStock });
+                        transaction.set(movementRef, {
+                            productId: product.id,
+                            productName: product.name,
+                            type: 'stock-out',
+                            quantity,
+                            reason: `Invoice ${invoiceData.id}`,
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                });
                 localStorage.removeItem('invoiceDraft');
 
                 // Handle max limit directly in cloud by deleting oldest if exceeded
                 if (invoiceHistoryList.length >= MAX_INVOICES) {
-                    const oldest = invoiceHistoryList[invoiceHistoryList.length - 1];
-                    try {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', oldest.id));
-                    } catch (error) {
-                        console.error("Invoice saved, but old invoice cleanup failed:", error);
-                        showSaveStatus('Invoice saved, but an old invoice could not be removed.', 'error');
-                        return;
+                    const oldestPaidInvoice = [...invoiceHistoryList].reverse().find(invoice =>
+                        (Number(invoice.balanceDueUsd) || 0) <= 0
+                    );
+                    if (oldestPaidInvoice) {
+                        await window.deleteInvoice(oldestPaidInvoice.id);
                     }
                 }
                 showSaveStatus('Invoice saved to Firebase.', 'success');
             } catch (error) {
                 console.error("Invoice save failed:", error);
-                showSaveStatus(`Could not save invoice: ${describeFirebaseError(error)}`, 'error');
+                showSaveStatus(`Could not save invoice: ${error.message || describeFirebaseError(error)}`, 'error');
             } finally {
                 isSavingInvoice = false;
                 btn.disabled = false;
@@ -707,6 +1230,11 @@
             document.getElementById('client-name-input').value = inv.customerName;
             document.getElementById('client-address-input').value = inv.customerAddress;
             document.getElementById('current-date').value = inv.date;
+            if (Number.isFinite(Number(inv.exchangeRate)) && Number(inv.exchangeRate) > 0) {
+                document.getElementById('usd-khr-rate').value = String(inv.exchangeRate);
+            }
+            document.getElementById('cash-received').value = Number(inv.cashReceived) || 0;
+            document.getElementById('cash-currency').value = inv.cashCurrency === 'KHR' ? 'KHR' : 'USD';
             const unpaidBillInput = document.getElementById('unpaid-bill');
             if(unpaidBillInput) unpaidBillInput.value = inv.unpaidBill;
             const noteTextarea = document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]');
@@ -736,7 +1264,61 @@
 
         window.deleteInvoice = async function(id) {
             if (!userId) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', id));
+            const invoiceRef = doc(db, 'artifacts', appId, 'users', userId, 'invoices', id);
+            try {
+                await runTransaction(db, async transaction => {
+                    const invoiceSnapshot = await transaction.get(invoiceRef);
+                    if (!invoiceSnapshot.exists()) return;
+                    const invoice = invoiceSnapshot.data();
+                    const customerRef = typeof invoice.customerId === 'string'
+                        ? doc(db, 'artifacts', appId, 'users', userId, 'customers', invoice.customerId)
+                        : null;
+                    const adjustments = invoice.stockDeducted && Array.isArray(invoice.stockAdjustments)
+                        ? invoice.stockAdjustments.filter(adjustment =>
+                            typeof adjustment.productId === 'string' &&
+                            Number.isInteger(adjustment.quantity) &&
+                            adjustment.quantity > 0
+                        )
+                        : [];
+                    const productRefs = adjustments.map(adjustment =>
+                        doc(db, 'artifacts', appId, 'users', userId, 'products', adjustment.productId)
+                    );
+                    const productSnapshots = await Promise.all(productRefs.map(productRef =>
+                        transaction.get(productRef)
+                    ));
+                    const customerSnapshot = customerRef ? await transaction.get(customerRef) : null;
+
+                    transaction.delete(invoiceRef);
+                    if (customerSnapshot?.exists()) {
+                        const remainingDebt = Math.max(0, Number(customerSnapshot.data().balanceUsd) || 0);
+                        const invoiceDebt = Math.max(0, Number(invoice.balanceDueUsd) || 0);
+                        transaction.update(customerRef, {
+                            balanceUsd: Math.round(Math.max(0, remainingDebt - invoiceDebt) * 100) / 100,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
+                    adjustments.forEach((adjustment, index) => {
+                        const productSnapshot = productSnapshots[index];
+                        if (!productSnapshot.exists()) return;
+                        const productRef = productRefs[index];
+                        const stock = productSnapshot.data().stock;
+                        const currentStock = Number.isInteger(stock) && stock >= 0 ? stock : 0;
+                        transaction.update(productRef, { stock: currentStock + adjustment.quantity });
+                        const movementRef = doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', `invoice-delete_${id}_${adjustment.productId}`);
+                        transaction.set(movementRef, {
+                            productId: adjustment.productId,
+                            productName: productSnapshot.data().name || adjustment.productName || '',
+                            type: 'stock-in',
+                            quantity: adjustment.quantity,
+                            reason: `Invoice ${id} deleted`,
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                });
+            } catch (error) {
+                console.error("Invoice deletion failed:", error);
+                showSaveStatus(`Could not delete invoice: ${error.message || describeFirebaseError(error)}`, 'error');
+            }
         }
 
         window.openCustomerDashboard = function() {
@@ -752,39 +1334,214 @@
 
         window.renderDashboardCustomers = function() {
             const tbody = document.getElementById('dashboard-customer-list');
-            tbody.innerHTML = '';
-            for (let i = 0; i < customerList.length; i++) {
-                const c = customerList[i];
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 px-3 text-gray-800">${c.name}</td>
-                        <td class="py-2 px-3 text-gray-600">${c.phone}</td>
-                        <td class="py-2 px-3 text-gray-600">${c.address}</td>
-                        <td class="py-2 px-3 text-center">
-                            <button onclick="deleteCustomer('${c.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </td>
-                    </tr>
-                `;
+            tbody.replaceChildren();
+            if (customerList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 7;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = isCustomerListLoaded ? 'No customers yet.' : 'Loading customers...';
+                return;
             }
+            customerList.forEach(customer => {
+                const row = tbody.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+                [customer.name || '', customer.phone || '', customer.address || ''].forEach(value => {
+                    const cell = row.insertCell();
+                    cell.className = 'py-2 px-3 text-gray-700';
+                    cell.textContent = value;
+                });
+
+                const balanceUsd = Math.max(0, Number(customer.balanceUsd) || 0);
+                const balanceCell = row.insertCell();
+                balanceCell.className = 'py-2 px-3 text-right font-semibold text-gray-800';
+                balanceCell.textContent = `$${balanceUsd.toFixed(2)}`;
+
+                const billsCell = row.insertCell();
+                billsCell.className = 'py-2 px-3 text-sm text-gray-700';
+                const unpaidInvoices = invoiceHistoryList.filter(invoice =>
+                    invoice.customerId === customer.id && Number(invoice.balanceDueUsd) > 0
+                );
+                if (unpaidInvoices.length) {
+                    unpaidInvoices.forEach(invoice => {
+                        const bill = document.createElement('div');
+                        bill.textContent = `${invoice.date || 'Undated'} · ${invoice.id}: $${Number(invoice.balanceDueUsd).toFixed(2)}`;
+                        billsCell.appendChild(bill);
+                    });
+                } else {
+                    billsCell.textContent = '—';
+                }
+
+                const paymentCell = row.insertCell();
+                paymentCell.className = 'py-2 px-3';
+                if (balanceUsd > 0) {
+                    const controls = document.createElement('div');
+                    controls.className = 'flex min-w-56 gap-1';
+                    const amountInput = document.createElement('input');
+                    amountInput.type = 'number';
+                    amountInput.min = '0.01';
+                    amountInput.step = '0.01';
+                    amountInput.placeholder = 'Amount';
+                    amountInput.className = 'border rounded px-2 py-1 w-24';
+                    const currencySelect = document.createElement('select');
+                    currencySelect.className = 'border rounded px-1 py-1';
+                    [['USD', 'USD'], ['KHR', 'KHR']].forEach(([value, label]) => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = label;
+                        currencySelect.appendChild(option);
+                    });
+                    const paymentButton = document.createElement('button');
+                    paymentButton.type = 'button';
+                    paymentButton.className = 'bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1 text-sm';
+                    paymentButton.textContent = 'Pay';
+                    paymentButton.addEventListener('click', async () => {
+                        paymentButton.disabled = true;
+                        await window.recordCustomerPayment(customer.id, amountInput.value, currencySelect.value);
+                        paymentButton.disabled = false;
+                    });
+                    controls.append(amountInput, currencySelect, paymentButton);
+                    paymentCell.appendChild(controls);
+                } else {
+                    paymentCell.textContent = 'No balance due';
+                    paymentCell.className += ' text-gray-500';
+                }
+
+                const actionCell = row.insertCell();
+                actionCell.className = 'py-2 px-3 text-center';
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'text-red-500 hover:text-red-700 p-1 disabled:opacity-40';
+                deleteButton.title = balanceUsd > 0 ? 'Clear customer balance before deleting' : 'Delete customer';
+                deleteButton.textContent = 'Delete';
+                deleteButton.disabled = balanceUsd > 0;
+                deleteButton.addEventListener('click', () => window.deleteCustomer(customer.id));
+                actionCell.appendChild(deleteButton);
+            });
         }
 
         window.addNewCustomer = async function() {
-            if (!userId) return;
+            const status = document.getElementById('customer-payment-status');
+            if (!userId) {
+                status.textContent = 'Connect to Firebase before adding customers.';
+                return;
+            }
             const name = document.getElementById('new-customer-name').value.trim();
             const phone = document.getElementById('new-customer-phone').value.trim();
             const address = document.getElementById('new-customer-address').value.trim();
-            if (name) {
+            if (!name) {
+                status.textContent = 'Enter a customer name.';
+                return;
+            }
+            try {
                 const id = 'cust_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
-                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id), { name, phone, address });
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id), {
+                    name, phone, address, balanceUsd: 0, totalPaymentsUsd: 0
+                });
                 document.getElementById('new-customer-name').value = '';
                 document.getElementById('new-customer-phone').value = '';
                 document.getElementById('new-customer-address').value = '';
+                status.textContent = 'Customer added.';
+            } catch (error) {
+                console.error('Customer creation failed:', error);
+                status.textContent = `Could not add customer: ${describeFirebaseError(error)}`;
+            }
+        }
+
+        window.recordCustomerPayment = async function(customerId, amountValue, currency) {
+            const status = document.getElementById('customer-payment-status');
+            if (!userId) {
+                status.textContent = 'Connect to Firebase before recording a payment.';
+                return;
+            }
+            const amount = Number(amountValue);
+            const rate = getDailyExchangeRate();
+            if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate <= 0) {
+                status.textContent = 'Enter a positive payment amount and a valid daily exchange rate.';
+                return;
+            }
+            const amountUsd = Math.round((currency === 'KHR' ? amount / rate : amount) * 100) / 100;
+            if (amountUsd <= 0) {
+                status.textContent = 'The payment must be at least one cent USD after currency conversion.';
+                return;
+            }
+
+            const customerRef = doc(db, 'artifacts', appId, 'users', userId, 'customers', customerId);
+            const invoicesQuery = query(
+                collection(db, 'artifacts', appId, 'users', userId, 'invoices'),
+                where('customerId', '==', customerId)
+            );
+            const paymentRef = doc(collection(db, 'artifacts', appId, 'users', userId, 'customers', customerId, 'payments'));
+            status.textContent = 'Recording customer payment...';
+            try {
+                await runTransaction(db, async transaction => {
+                    const [customerSnapshot, invoiceSnapshot] = await Promise.all([
+                        transaction.get(customerRef),
+                        transaction.get(invoicesQuery)
+                    ]);
+                    if (!customerSnapshot.exists()) throw new Error('Customer no longer exists.');
+                    const customer = customerSnapshot.data();
+                    const currentBalance = Math.max(0, Number(customer.balanceUsd) || 0);
+                    if (amountUsd - currentBalance > 0.005) {
+                        throw new Error(`Payment exceeds the outstanding balance of $${currentBalance.toFixed(2)}.`);
+                    }
+
+                    const outstandingInvoices = invoiceSnapshot.docs
+                        .map(invoiceDoc => ({ ref: invoiceDoc.ref, data: invoiceDoc.data() }))
+                        .filter(invoice => Number(invoice.data.balanceDueUsd) > 0)
+                        .sort((left, right) => (left.data.date || '').localeCompare(right.data.date || ''));
+                    let remainingPayment = amountUsd;
+                    const allocations = [];
+                    outstandingInvoices.forEach(invoice => {
+                        if (remainingPayment <= 0) return;
+                        const invoiceBalance = Math.round(Number(invoice.data.balanceDueUsd) * 100) / 100;
+                        const applied = Math.min(invoiceBalance, remainingPayment);
+                        const nextBalance = Math.round((invoiceBalance - applied) * 100) / 100;
+                        remainingPayment = Math.round((remainingPayment - applied) * 100) / 100;
+                        allocations.push({ ref: invoice.ref, invoiceId: invoice.ref.id, applied, nextBalance });
+                    });
+                    if (remainingPayment > 0.005) {
+                        throw new Error('Customer balance does not match outstanding invoices. Refresh and check the invoice history.');
+                    }
+
+                    allocations.forEach(allocation => {
+                        transaction.update(allocation.ref, { balanceDueUsd: allocation.nextBalance });
+                    });
+                    transaction.update(customerRef, {
+                        balanceUsd: Math.round(Math.max(0, currentBalance - amountUsd) * 100) / 100,
+                        totalPaymentsUsd: Math.round(((Number(customer.totalPaymentsUsd) || 0) + amountUsd) * 100) / 100,
+                        updatedAt: new Date().toISOString()
+                    });
+                    transaction.set(paymentRef, {
+                        amount,
+                        currency,
+                        amountUsd,
+                        exchangeRate: rate,
+                        allocations: allocations.map(({ invoiceId, applied }) => ({ invoiceId, amountUsd: applied })),
+                        createdAt: new Date().toISOString()
+                    });
+                });
+                status.textContent = `Payment of $${amountUsd.toFixed(2)} recorded.`;
+            } catch (error) {
+                console.error('Customer payment failed:', error);
+                status.textContent = `Could not record payment: ${error.message || describeFirebaseError(error)}`;
             }
         }
 
         window.deleteCustomer = async function(id) {
             if (!userId) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id));
+            const customer = customerList.find(item => item.id === id);
+            if ((Number(customer?.balanceUsd) || 0) > 0) {
+                document.getElementById('customer-payment-status').textContent = 'Record payment or settle the balance before deleting this customer.';
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id));
+                document.getElementById('customer-payment-status').textContent = 'Customer deleted.';
+            } catch (error) {
+                console.error('Customer deletion failed:', error);
+                document.getElementById('customer-payment-status').textContent = `Could not delete customer: ${describeFirebaseError(error)}`;
+            }
         }
 
         window.openProductDashboard = function() {
@@ -800,31 +1557,377 @@
 
         window.renderDashboardProducts = function() {
             const tbody = document.getElementById('dashboard-product-list');
-            tbody.innerHTML = '';
-            for (let i = 0; i < productList.length; i++) {
-                const p = productList[i];
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 px-3 text-gray-800">${p.name}</td>
-                        <td class="py-2 px-3 text-right text-gray-600">$${p.price.toFixed(2)}</td>
-                        <td class="py-2 px-3 text-center">
-                            <button onclick="deleteProduct('${p.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </td>
-                    </tr>
-                `;
+            tbody.replaceChildren();
+            if (productList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 5;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = 'No products yet.';
+                window.renderStockMovements();
+                return;
             }
+
+            productList.forEach(product => {
+                const row = tbody.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+
+                const nameCell = row.insertCell();
+                nameCell.className = 'py-2 px-3 text-gray-800';
+                nameCell.textContent = product.name || '';
+
+                const priceCell = row.insertCell();
+                priceCell.className = 'py-2 px-3 text-right text-gray-600';
+                priceCell.textContent = `$${(Number(product.price) || 0).toFixed(2)}`;
+
+                const stockCell = row.insertCell();
+                const stock = Number.isInteger(product.stock) && product.stock >= 0 ? product.stock : null;
+                const threshold = Number.isInteger(product.lowStockThreshold) && product.lowStockThreshold >= 0
+                    ? product.lowStockThreshold
+                    : 5;
+                stockCell.className = `py-2 px-3 text-right font-semibold ${stock !== null && stock <= threshold ? 'text-rose-700' : 'text-gray-700'}`;
+                stockCell.textContent = stock === null ? 'Not tracked' : `${stock}${stock <= threshold ? ' (Low)' : ''}`;
+
+                const actionCell = row.insertCell();
+                actionCell.className = 'py-2 px-3';
+                const actionGroup = document.createElement('div');
+                actionGroup.className = 'flex items-center justify-center gap-1';
+                const amountInput = document.createElement('input');
+                amountInput.type = 'number';
+                amountInput.min = '1';
+                amountInput.step = '1';
+                amountInput.value = '1';
+                amountInput.className = 'w-14 border rounded px-1 py-1 text-center';
+                amountInput.setAttribute('aria-label', `Quantity to adjust for ${product.name}`);
+                const stockInButton = document.createElement('button');
+                stockInButton.type = 'button';
+                stockInButton.className = 'bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded';
+                stockInButton.textContent = '+';
+                stockInButton.title = 'Receive stock';
+                stockInButton.addEventListener('click', () => window.adjustProductStock(product.id, 'in', amountInput.value));
+                const stockOutButton = document.createElement('button');
+                stockOutButton.type = 'button';
+                stockOutButton.className = 'bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded';
+                stockOutButton.textContent = '-';
+                stockOutButton.title = 'Remove stock';
+                stockOutButton.addEventListener('click', () => window.adjustProductStock(product.id, 'out', amountInput.value));
+                actionGroup.append(amountInput, stockInButton, stockOutButton);
+                actionCell.appendChild(actionGroup);
+
+                const deleteCell = row.insertCell();
+                deleteCell.className = 'py-2 px-3 text-center';
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'text-red-500 hover:text-red-700 p-1';
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => window.deleteProduct(product.id));
+                deleteCell.appendChild(deleteButton);
+            });
+            window.renderStockMovements();
         }
 
         window.addNewProduct = async function() {
-            if (!userId) return;
+            if (!userId) {
+                showInventoryStatus('Firebase is not connected. Please wait and try again.', 'error');
+                return;
+            }
             const name = document.getElementById('new-product-name').value.trim();
             const price = parseFloat(document.getElementById('new-product-price').value);
-            if (name && !isNaN(price) && price >= 0) {
-                const id = 'prod_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
-                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'products', id), { name, price });
+            const stock = Number(document.getElementById('new-product-stock').value);
+            const lowStockThreshold = Number(document.getElementById('new-product-low-stock').value);
+            if (!name || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0 ||
+                !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
+                showInventoryStatus('Enter a product name, valid price, and whole-number stock values.', 'error');
+                return;
+            }
+            if (productList.some(product => product.name.trim().toLowerCase() === name.toLowerCase())) {
+                showInventoryStatus('A product with this name already exists.', 'error');
+                return;
+            }
+
+            const id = 'prod_' + Date.now().toString() + Math.random().toString(36).slice(2, 7);
+            try {
+                const batch = writeBatch(db);
+                batch.set(doc(db, 'artifacts', appId, 'users', userId, 'products', id), {
+                    name,
+                    price,
+                    stock,
+                    lowStockThreshold
+                });
+                if (stock > 0) {
+                    const movementId = `movement_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                    batch.set(doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', movementId), {
+                        productId: id,
+                        productName: name,
+                        type: 'stock-in',
+                        quantity: stock,
+                        reason: 'Opening stock',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+                await batch.commit();
                 document.getElementById('new-product-name').value = '';
                 document.getElementById('new-product-price').value = '';
+                document.getElementById('new-product-stock').value = '0';
+                document.getElementById('new-product-low-stock').value = '5';
+                showInventoryStatus(`Added ${name} with ${stock} in stock.`, 'success');
+            } catch (error) {
+                console.error("Product creation failed:", error);
+                showInventoryStatus(`Could not add product: ${describeFirebaseError(error)}`, 'error');
             }
+        }
+
+        function showInventoryStatus(message, type = 'info') {
+            const status = document.getElementById('inventory-status');
+            const colors = { info: 'text-gray-600', success: 'text-green-700', error: 'text-red-600' };
+            status.textContent = message;
+            status.className = `text-sm mb-3 ${colors[type]}`;
+        }
+
+        function csvCell(value, allowFormula = false) {
+            let text = String(value ?? '');
+            if (!allowFormula && /^[=+\-@]/.test(text)) text = `'${text}`;
+            return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function parseCsv(text) {
+            const rows = [];
+            let row = [];
+            let field = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (inQuotes) {
+                    if (char === '"' && text[i + 1] === '"') {
+                        field += '"';
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = false;
+                    } else {
+                        field += char;
+                    }
+                } else if (char === '"' && field.length === 0) {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    row.push(field);
+                    field = '';
+                } else if (char === '\n' || char === '\r') {
+                    if (char === '\r' && text[i + 1] === '\n') i++;
+                    row.push(field);
+                    if (row.some(value => value.trim() !== '')) rows.push(row);
+                    row = [];
+                    field = '';
+                } else {
+                    field += char;
+                }
+            }
+            if (inQuotes) throw new Error('CSV contains an unclosed quoted field.');
+            row.push(field);
+            if (row.some(value => value.trim() !== '')) rows.push(row);
+            return rows;
+        }
+
+        function downloadCsv(filename, rows, formulaColumns = []) {
+            const csv = '\uFEFF' + rows.map((row, rowIndex) =>
+                row.map((cell, columnIndex) => csvCell(cell, rowIndex > 0 && formulaColumns.includes(columnIndex))).join(',')
+            ).join('\r\n');
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        window.exportProductsCsv = function() {
+            const rows = [['Name', 'Price', 'Stock', 'LowStockThreshold', 'StockValue']];
+            productList.forEach((product, index) => rows.push([
+                product.name,
+                product.price,
+                Number.isInteger(product.stock) ? product.stock : '',
+                Number.isInteger(product.lowStockThreshold) ? product.lowStockThreshold : 5,
+                Number.isInteger(product.stock) ? `=B${index + 2}*C${index + 2}` : ''
+            ]));
+            downloadCsv('products.csv', rows, [4]);
+            showInventoryStatus('Products CSV exported for Excel.', 'success');
+        }
+
+        window.exportStockMovementsCsv = function() {
+            const rows = [['Date', 'Product', 'Movement', 'Quantity', 'Reason']];
+            stockMovementList.forEach(movement => rows.push([
+                movement.createdAt || '',
+                movement.productName || '',
+                movement.type || '',
+                movement.quantity,
+                movement.reason || ''
+            ]));
+            downloadCsv('stock-movements.csv', rows);
+            showInventoryStatus('Stock movement CSV exported for Excel.', 'success');
+        }
+
+        window.importProductsCsv = async function(event) {
+            const input = event.target;
+            const file = input.files?.[0];
+            if (!file) return;
+            if (!userId) {
+                showInventoryStatus('Firebase is not connected. Please wait and try again.', 'error');
+                input.value = '';
+                return;
+            }
+
+            try {
+                const rows = parseCsv(await file.text());
+                if (rows.length < 2) throw new Error('CSV must include a header row and at least one product.');
+                const headers = rows[0].map(value => value.replace(/^\uFEFF/, '').trim().toLowerCase());
+                const nameIndex = headers.indexOf('name') !== -1 ? headers.indexOf('name') : headers.indexOf('product');
+                const priceIndex = headers.indexOf('price');
+                const stockIndex = headers.indexOf('stock');
+                const thresholdIndex = headers.indexOf('lowstockthreshold');
+                if (nameIndex < 0 || priceIndex < 0) {
+                    throw new Error('CSV requires Name and Price columns. Stock and LowStockThreshold are optional.');
+                }
+                const productsByName = new Map(productList.map(product => [product.name.trim().toLowerCase(), product]));
+                const seenNames = new Set();
+                const imports = rows.slice(1).map((values, index) => {
+                    const line = index + 2;
+                    const getValue = columnIndex => columnIndex < 0 ? '' : (values[columnIndex] || '').trim();
+                    const name = getValue(nameIndex);
+                    const priceText = getValue(priceIndex);
+                    const stockText = getValue(stockIndex);
+                    const thresholdText = getValue(thresholdIndex);
+                    const price = Number(priceText);
+                    const stock = stockText === '' ? null : Number(stockText);
+                    const lowStockThreshold = thresholdText === '' ? null : Number(thresholdText);
+
+                    if (!name || !Number.isFinite(price) || price < 0) {
+                        throw new Error(`Line ${line}: product name and a non-negative price are required.`);
+                    }
+                    if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
+                        throw new Error(`Line ${line}: stock must be a whole number greater than or equal to zero.`);
+                    }
+                    if (lowStockThreshold !== null && (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0)) {
+                        throw new Error(`Line ${line}: LowStockThreshold must be a whole number greater than or equal to zero.`);
+                    }
+                    const key = name.toLowerCase();
+                    if (seenNames.has(key)) throw new Error(`Line ${line}: duplicate product name "${name}" in CSV.`);
+                    seenNames.add(key);
+                    return { name, price, stock, lowStockThreshold, existing: productsByName.get(key), line };
+                });
+                if (imports.length > 200) throw new Error('Import is limited to 200 products at a time.');
+                if (!window.confirm(`Import ${imports.length} products? Matching names will be updated, including stock when provided.`)) return;
+
+                const batch = writeBatch(db);
+                let movementCount = 0;
+                imports.forEach((product, index) => {
+                    const id = product.existing?.id || `prod_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
+                    const currentStock = Number.isInteger(product.existing?.stock) ? product.existing.stock : null;
+                    const nextStock = product.stock === null ? (product.existing ? currentStock : 0) : product.stock;
+                    const lowStockThreshold = product.lowStockThreshold ??
+                        (Number.isInteger(product.existing?.lowStockThreshold) ? product.existing.lowStockThreshold : 5);
+                    const productData = product.existing ? { ...product.existing } : {};
+                    delete productData.id;
+                    Object.assign(productData, {
+                        name: product.name,
+                        price: product.price,
+                        lowStockThreshold
+                    });
+                    if (nextStock !== null) productData.stock = nextStock;
+                    batch.set(doc(db, 'artifacts', appId, 'users', userId, 'products', id), productData);
+
+                    const quantityChange = nextStock === null ? 0 : nextStock - (currentStock ?? 0);
+                    if (quantityChange !== 0) {
+                        const movementId = `movement_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
+                        batch.set(doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', movementId), {
+                            productId: id,
+                            productName: product.name,
+                            type: quantityChange > 0 ? 'stock-in' : 'stock-out',
+                            quantity: Math.abs(quantityChange),
+                            reason: 'CSV import adjustment',
+                            createdAt: new Date().toISOString()
+                        });
+                        movementCount++;
+                    }
+                });
+                await batch.commit();
+                showInventoryStatus(`Imported ${imports.length} products; recorded ${movementCount} stock changes.`, 'success');
+            } catch (error) {
+                console.error("Product CSV import failed:", error);
+                showInventoryStatus(`CSV import failed: ${error.message || describeFirebaseError(error)}`, 'error');
+            } finally {
+                input.value = '';
+            }
+        }
+
+        window.adjustProductStock = async function(productId, direction, quantityValue) {
+            if (!userId) {
+                showInventoryStatus('Firebase is not connected. Please wait and try again.', 'error');
+                return;
+            }
+            const quantity = Number(quantityValue);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                showInventoryStatus('Stock adjustment must be a whole number greater than zero.', 'error');
+                return;
+            }
+
+            const product = productList.find(item => item.id === productId);
+            if (!product) {
+                showInventoryStatus('Product could not be found. Refresh and try again.', 'error');
+                return;
+            }
+            const productRef = doc(db, 'artifacts', appId, 'users', userId, 'products', productId);
+            const movementRef = doc(collection(db, 'artifacts', appId, 'users', userId, 'stockMovements'));
+            try {
+                await runTransaction(db, async transaction => {
+                    const productSnapshot = await transaction.get(productRef);
+                    if (!productSnapshot.exists()) throw new Error('Product no longer exists.');
+                    const currentStock = Number.isInteger(productSnapshot.data().stock) ? productSnapshot.data().stock : 0;
+                    const nextStock = currentStock + (direction === 'in' ? quantity : -quantity);
+                    if (nextStock < 0) throw new Error('Cannot remove more stock than is currently available.');
+                    transaction.update(productRef, { stock: nextStock });
+                    transaction.set(movementRef, {
+                        productId,
+                        productName: productSnapshot.data().name || product.name,
+                        type: direction === 'in' ? 'stock-in' : 'stock-out',
+                        quantity,
+                        reason: direction === 'in' ? 'Manual stock received' : 'Manual stock removed',
+                        createdAt: new Date().toISOString()
+                    });
+                });
+                showInventoryStatus(`Stock ${direction === 'in' ? 'received' : 'removed'} for ${product.name}.`, 'success');
+            } catch (error) {
+                console.error("Stock adjustment failed:", error);
+                showInventoryStatus(`Could not adjust stock: ${error.message || describeFirebaseError(error)}`, 'error');
+            }
+        }
+
+        window.renderStockMovements = function() {
+            const tbody = document.getElementById('stock-movement-list');
+            tbody.replaceChildren();
+            if (stockMovementList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 4;
+                cell.className = 'py-3 text-center text-gray-500';
+                cell.textContent = 'No stock changes recorded yet.';
+                return;
+            }
+            stockMovementList.slice(0, 50).forEach(movement => {
+                const row = tbody.insertRow();
+                const values = [
+                    movement.createdAt ? new Date(movement.createdAt).toLocaleString() : '',
+                    movement.productName || '',
+                    movement.reason || movement.type || '',
+                    `${movement.type === 'stock-out' ? '-' : '+'}${Number(movement.quantity) || 0}`
+                ];
+                values.forEach((value, index) => {
+                    const cell = row.insertCell();
+                    cell.className = `py-2 px-3 ${index === 3 ? 'text-right font-semibold' : 'text-gray-600'}`;
+                    cell.textContent = value;
+                });
+            });
         }
 
         window.deleteProduct = async function(id) {
@@ -832,8 +1935,282 @@
             await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'products', id));
         }
 
+        function getLocalDateString() {
+            const date = new Date();
+            date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+            return date.toISOString().slice(0, 10);
+        }
+
+        function showExpenseStatus(message, type = 'info') {
+            const status = document.getElementById('expense-status');
+            const colors = {
+                info: 'text-gray-600',
+                success: 'text-green-700',
+                error: 'text-red-600'
+            };
+            status.textContent = message;
+            status.className = `text-sm mb-3 ${colors[type]}`;
+        }
+
+        window.openExpenseDashboard = function() {
+            document.getElementById('expense-modal').classList.remove('hidden');
+            document.getElementById('expense-modal').classList.add('flex');
+            document.getElementById('expense-date').value = getLocalDateString();
+            window.renderExpenses();
+        }
+
+        window.closeExpenseDashboard = function() {
+            document.getElementById('expense-modal').classList.add('hidden');
+            document.getElementById('expense-modal').classList.remove('flex');
+        }
+
+        window.renderExpenses = function() {
+            const tbody = document.getElementById('expense-list');
+            const currentMonth = getLocalDateString().slice(0, 7);
+            const monthTotal = expenseList.reduce((sum, expense) => {
+                return (expense.date || '').startsWith(currentMonth)
+                    ? sum + (Number(expense.amount) || 0)
+                    : sum;
+            }, 0);
+            document.getElementById('monthly-expense-total').textContent = `$${monthTotal.toFixed(2)}`;
+            tbody.replaceChildren();
+
+            if (expenseList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 4;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = 'No expenses recorded yet.';
+                return;
+            }
+
+            expenseList.forEach(expense => {
+                const row = tbody.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+
+                const dateCell = row.insertCell();
+                dateCell.className = 'py-2 px-3 text-gray-600';
+                dateCell.textContent = expense.date || '';
+
+                const descriptionCell = row.insertCell();
+                descriptionCell.className = 'py-2 px-3';
+                const category = document.createElement('span');
+                category.className = 'font-medium text-gray-800';
+                category.textContent = expense.category || 'Other';
+                const description = document.createElement('span');
+                description.className = 'block text-sm text-gray-500';
+                description.textContent = expense.description || '';
+                descriptionCell.append(category, description);
+
+                const amountCell = row.insertCell();
+                amountCell.className = 'py-2 px-3 text-right font-semibold text-rose-700';
+                amountCell.textContent = `$${(Number(expense.amount) || 0).toFixed(2)}`;
+
+                const actionCell = row.insertCell();
+                actionCell.className = 'py-2 px-3 text-center';
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'text-red-500 hover:text-red-700';
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => window.deleteExpense(expense.id));
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        window.addExpense = async function(event) {
+            event.preventDefault();
+            if (!userId) {
+                showExpenseStatus('Firebase is not connected. Please wait and try again.', 'error');
+                return;
+            }
+
+            const amount = Number(document.getElementById('expense-amount').value);
+            const date = document.getElementById('expense-date').value;
+            const category = document.getElementById('expense-category').value;
+            const description = document.getElementById('expense-description').value.trim();
+            if (!Number.isFinite(amount) || amount <= 0 || !date || !category || !description) {
+                showExpenseStatus('Enter a valid date, category, description, and amount greater than zero.', 'error');
+                return;
+            }
+
+            const button = document.getElementById('add-expense-btn');
+            button.disabled = true;
+            showExpenseStatus('Saving expense...', 'info');
+            try {
+                const id = `expense_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'expenses', id), {
+                    id,
+                    date,
+                    category,
+                    description,
+                    amount
+                });
+                document.getElementById('expense-form').reset();
+                document.getElementById('expense-date').value = getLocalDateString();
+                showExpenseStatus('Expense saved.', 'success');
+            } catch (error) {
+                console.error("Expense save failed:", error);
+                showExpenseStatus(`Could not save expense: ${describeFirebaseError(error)}`, 'error');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        window.deleteExpense = async function(id) {
+            if (!userId) {
+                showExpenseStatus('Firebase is not connected. Please wait and try again.', 'error');
+                return;
+            }
+            if (!window.confirm('Delete this expense?')) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'expenses', id));
+                showExpenseStatus('Expense deleted.', 'success');
+            } catch (error) {
+                console.error("Expense deletion failed:", error);
+                showExpenseStatus(`Could not delete expense: ${describeFirebaseError(error)}`, 'error');
+            }
+        }
+
+        function calculateBusinessReport(invoices, expenses, startDate, endDate) {
+            if (!startDate || !endDate || startDate > endDate) {
+                throw new Error('Choose a valid date range.');
+            }
+            const filteredInvoices = invoices.filter(invoice =>
+                typeof invoice.date === 'string' && invoice.date >= startDate && invoice.date <= endDate
+            );
+            const filteredExpenses = expenses.filter(expense =>
+                typeof expense.date === 'string' && expense.date >= startDate && expense.date <= endDate
+            );
+            const products = new Map();
+            let sales = 0;
+            let carriedUnpaid = 0;
+
+            filteredInvoices.forEach(invoice => {
+                carriedUnpaid += Number(invoice.unpaidBill) || 0;
+                (Array.isArray(invoice.items) ? invoice.items : []).forEach(item => {
+                    const name = typeof item.name === 'string' ? item.name.trim() : '';
+                    const quantity = Number(item.qty);
+                    const price = Number(item.price);
+                    if (!name || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price < 0) return;
+                    const itemSales = quantity * price;
+                    sales += itemSales;
+                    const current = products.get(name) || { name, quantity: 0, sales: 0 };
+                    current.quantity += quantity;
+                    current.sales += itemSales;
+                    products.set(name, current);
+                });
+            });
+
+            const expenseTotal = filteredExpenses.reduce((total, expense) => total + (Number(expense.amount) || 0), 0);
+            return {
+                invoices: filteredInvoices,
+                expenses: filteredExpenses,
+                sales,
+                expenseTotal,
+                netAfterExpenses: sales - expenseTotal,
+                carriedUnpaid,
+                products: Array.from(products.values()).sort((a, b) => b.quantity - a.quantity || b.sales - a.sales)
+            };
+        }
+
+        window.openBusinessReport = function() {
+            document.getElementById('report-modal').classList.remove('hidden');
+            document.getElementById('report-modal').classList.add('flex');
+            const today = getLocalDateString();
+            document.getElementById('report-start-date').value = `${today.slice(0, 7)}-01`;
+            document.getElementById('report-end-date').value = today;
+            window.renderBusinessReport();
+        }
+
+        window.closeBusinessReport = function() {
+            document.getElementById('report-modal').classList.add('hidden');
+            document.getElementById('report-modal').classList.remove('flex');
+        }
+
+        window.renderBusinessReport = function() {
+            const status = document.getElementById('report-status');
+            let report;
+            try {
+                report = calculateBusinessReport(
+                    invoiceHistoryList,
+                    expenseList,
+                    document.getElementById('report-start-date').value,
+                    document.getElementById('report-end-date').value
+                );
+            } catch (error) {
+                status.textContent = error.message;
+                return;
+            }
+            status.textContent = '';
+            document.getElementById('report-sales').textContent = `$${report.sales.toFixed(2)}`;
+            document.getElementById('report-expenses').textContent = `$${report.expenseTotal.toFixed(2)}`;
+            document.getElementById('report-net').textContent = `$${report.netAfterExpenses.toFixed(2)}`;
+            document.getElementById('report-unpaid').textContent = `$${report.carriedUnpaid.toFixed(2)}`;
+
+            const tbody = document.getElementById('report-product-list');
+            tbody.replaceChildren();
+            if (report.products.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 3;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = 'No product sales in this date range.';
+                return;
+            }
+            report.products.slice(0, 20).forEach(product => {
+                const row = tbody.insertRow();
+                [product.name, product.quantity.toLocaleString(), `$${product.sales.toFixed(2)}`].forEach((value, index) => {
+                    const cell = row.insertCell();
+                    cell.className = `py-2 px-3 ${index > 0 ? 'text-right' : 'text-gray-700'}`;
+                    cell.textContent = value;
+                });
+            });
+        }
+
+        window.exportBusinessReportCsv = function() {
+            try {
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                const report = calculateBusinessReport(invoiceHistoryList, expenseList, startDate, endDate);
+                const rows = [
+                    ['Business Report', `${startDate} to ${endDate}`],
+                    ['Product sales', report.sales.toFixed(2)],
+                    ['Expenses', report.expenseTotal.toFixed(2)],
+                    ['Sales minus expenses (excludes product cost/tax)', report.netAfterExpenses.toFixed(2)],
+                    ['Carried unpaid bill amounts', report.carriedUnpaid.toFixed(2)],
+                    ['Invoices', report.invoices.length],
+                    [],
+                    ['Best-selling products'],
+                    ['Product', 'Quantity sold', 'Sales'],
+                    ...report.products.map(product => [product.name, product.quantity, product.sales.toFixed(2)]),
+                    [],
+                    ['Invoices'],
+                    ['Date', 'Customer', 'Product sales', 'Carried unpaid amount']
+                ];
+                report.invoices.forEach(invoice => {
+                    const productSales = (Array.isArray(invoice.items) ? invoice.items : []).reduce((total, item) => {
+                        const quantity = Number(item.qty);
+                        const price = Number(item.price);
+                        return total + (Number.isFinite(quantity) && quantity > 0 && Number.isFinite(price) && price >= 0 ? quantity * price : 0);
+                    }, 0);
+                    rows.push([invoice.date || '', invoice.customerName || '', productSales.toFixed(2), (Number(invoice.unpaidBill) || 0).toFixed(2)]);
+                });
+                rows.push([], ['Expenses'], ['Date', 'Category', 'Description', 'Amount']);
+                report.expenses.forEach(expense => rows.push([
+                    expense.date || '',
+                    expense.category || '',
+                    expense.description || '',
+                    (Number(expense.amount) || 0).toFixed(2)
+                ]));
+                downloadCsv(`business-report-${startDate}-to-${endDate}.csv`, rows);
+                document.getElementById('report-status').textContent = 'Report CSV exported for Excel.';
+            } catch (error) {
+                document.getElementById('report-status').textContent = error.message;
+            }
+        }
+
         window.backupData = function() {
-            const allData = { customerList, productList, invoiceHistoryList, exportDate: new Date().toISOString() };
+            const allData = { customerList, productList, stockMovementList, invoiceHistoryList, expenseList, exportDate: new Date().toISOString() };
             const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
