@@ -27,7 +27,20 @@
             background-color: #f9fafb;
             outline: none;
         }
+        #pos-receipt {
+            display: none;
+        }
         
+        @page receipt58 {
+            size: 58mm auto;
+            margin: 2mm;
+        }
+
+        @page receipt80 {
+            size: 80mm auto;
+            margin: 3mm;
+        }
+
         /* Specific Print Styles */
         @media print {
             body {
@@ -54,7 +67,66 @@
             ::-webkit-input-placeholder { color: transparent; }
             :-moz-placeholder { color: transparent; }
             ::-moz-placeholder { color: transparent; }
-            :-ms-input-placeholder { color: transparent; }
+            :-ms-input-placeholder { color: transparent;             }
+
+            #pos-receipt {
+                display: none;
+            }
+
+            body.print-receipt {
+                background: white;
+                padding: 0;
+            }
+            body.print-receipt.receipt-58 {
+                page: receipt58;
+            }
+            body.print-receipt.receipt-80 {
+                page: receipt80;
+            }
+            body.print-receipt #invoice-container {
+                display: none !important;
+            }
+            body.print-receipt #pos-receipt {
+                display: block !important;
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                padding: 0;
+                color: #000;
+                background: #fff;
+                box-shadow: none;
+                font: 10pt/1.35 Arial, sans-serif;
+            }
+            body.print-receipt #pos-receipt h1 {
+                margin: 0 0 8px;
+                text-align: center;
+                font-size: 15pt;
+            }
+            body.print-receipt #pos-receipt table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+            body.print-receipt #pos-receipt th,
+            body.print-receipt #pos-receipt td {
+                padding: 3px 0;
+                border-bottom: 1px dashed #777;
+                overflow-wrap: anywhere;
+            }
+            body.print-receipt #pos-receipt .receipt-right {
+                text-align: right;
+            }
+            body.print-receipt #pos-receipt .receipt-center {
+                text-align: center;
+            }
+            body.print-receipt #pos-receipt .receipt-total {
+                font-weight: 700;
+                font-size: 12pt;
+            }
+            body.print-receipt #pos-receipt .receipt-footer {
+                margin-top: 8px;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -104,6 +176,16 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Print
+        </button>
+        <label class="flex items-center gap-1 text-sm text-gray-700">
+            <span>Receipt width</span>
+            <select id="receipt-width" class="border rounded px-2 py-2">
+                <option value="80">80 mm</option>
+                <option value="58">58 mm</option>
+            </select>
+        </label>
+        <button onclick="printPosReceipt()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded shadow">
+            Print POS Receipt
         </button>
         <p id="save-status" class="w-full text-right text-sm text-gray-600" role="status" aria-live="polite">Connecting to Firebase...</p>
     </div>
@@ -178,6 +260,26 @@
                     <span class="font-bold text-gray-900 text-lg">Grand Total:</span>
                     <span class="font-bold text-blue-600 text-lg">$<span id="grand-total">0.00</span></span>
                 </div>
+                <div class="flex justify-between py-2 border-b items-center gap-2 no-print">
+                    <label for="usd-khr-rate" class="text-sm font-semibold text-gray-600">Daily rate (KHR / USD)</label>
+                    <input type="number" id="usd-khr-rate" class="border rounded px-2 py-1 text-right w-28" min="1" step="1" value="4100" onchange="saveExchangeRate(); calculateTotals()" oninput="calculateTotals()">
+                </div>
+                <div class="flex justify-between py-2 border-b">
+                    <span class="font-semibold text-gray-600">Grand Total (KHR) <span class="block text-xs font-normal">1 USD = ៛<span id="exchange-rate-display">4,100</span></span></span>
+                    <span id="grand-total-khr" class="font-bold text-gray-800">៛0</span>
+                </div>
+                <div class="py-3 border-b no-print">
+                    <label for="cash-received" class="block text-sm font-semibold text-gray-600 mb-1">Cash Received</label>
+                    <div class="flex justify-end gap-2">
+                        <input type="number" id="cash-received" class="border rounded px-2 py-1 text-right w-32" min="0" step="0.01" value="0" oninput="calculateTotals()">
+                        <select id="cash-currency" class="border rounded px-2 py-1" onchange="calculateTotals()">
+                            <option value="USD">USD ($)</option>
+                            <option value="KHR">KHR (៛)</option>
+                        </select>
+                    </div>
+                    <p class="text-xs text-gray-600 text-right mt-2">Balance due: <strong id="balance-due-usd">$0.00</strong> / <strong id="balance-due-khr">៛0</strong></p>
+                    <p class="text-xs text-gray-500 text-right mt-1">Change due: <strong id="change-due-usd">$0.00</strong> / <strong id="change-due-khr">៛0</strong></p>
+                </div>
             </div>
         </div>
 
@@ -188,6 +290,8 @@
         </div>
 
     </div>
+
+    <div id="pos-receipt" aria-hidden="true"></div>
 
     <!-- Product Dashboard Modal (Hidden by default) -->
     <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
@@ -267,13 +371,16 @@
                 <button onclick="addNewCustomer()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded transition">បន្ថែម</button>
             </div>
 
-            <div class="max-h-60 overflow-y-auto border rounded">
+            <div class="max-h-60 overflow-auto border rounded">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
                             <th class="py-2 px-3 border-b text-gray-700">ឈ្មោះអតិថិជន</th>
                             <th class="py-2 px-3 border-b text-gray-700">លេខទូរសព្ទ</th>
                             <th class="py-2 px-3 border-b text-gray-700">អាសយដ្ឋាន</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Balance (USD)</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Unpaid bills</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Record payment</th>
                             <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
                         </tr>
                     </thead>
@@ -282,6 +389,7 @@
                     </tbody>
                 </table>
             </div>
+            <p id="customer-payment-status" class="mt-3 text-sm text-gray-600" role="status" aria-live="polite"></p>
         </div>
     </div>
 
@@ -420,7 +528,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, runTransaction, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Hardcoded Firebase Configuration from your project setup
         const appId = 'pov-store-app';
@@ -471,12 +579,64 @@
 
         let userId = null;
         let customerList = [];
+        let isCustomerListLoaded = false;
+        let customerListLoadError = null;
         let productList = [];
         let stockMovementList = [];
         let isProductListLoaded = false;
         let invoiceHistoryList = [];
         let expenseList = [];
         const MAX_INVOICES = 500;
+
+        function getLocalDateKey(date = new Date()) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getDailyExchangeRate() {
+            return Number(document.getElementById('usd-khr-rate').value);
+        }
+
+        function calculatePaymentSummary(grandTotal) {
+            const rate = getDailyExchangeRate();
+            const tenderInput = document.getElementById('cash-received');
+            const tenderAmount = Number(tenderInput.value || 0);
+            const currency = document.getElementById('cash-currency').value;
+            if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(tenderAmount) || tenderAmount < 0 ||
+                !Number.isFinite(grandTotal) || grandTotal < 0) {
+                return null;
+            }
+            const tenderUsd = currency === 'KHR' ? tenderAmount / rate : tenderAmount;
+            const paymentAppliedUsd = Math.round(Math.min(grandTotal, tenderUsd) * 100) / 100;
+            const changeDueUsd = Math.round(Math.max(0, tenderUsd - grandTotal) * 100) / 100;
+            return {
+                rate,
+                currency,
+                tenderAmount,
+                tenderUsd,
+                paymentAppliedUsd,
+                balanceDueUsd: Math.round(Math.max(0, grandTotal - paymentAppliedUsd) * 100) / 100,
+                changeDueUsd,
+                changeDueKhr: Math.round(changeDueUsd * rate)
+            };
+        }
+
+        window.saveExchangeRate = function() {
+            const rate = getDailyExchangeRate();
+            if (!Number.isFinite(rate) || rate <= 0) {
+                showSaveStatus('Enter a valid USD to KHR exchange rate greater than zero.', 'error');
+                return;
+            }
+            localStorage.setItem(`usdKhrRate_${getLocalDateKey()}`, String(rate));
+            window.calculateTotals();
+        }
+
+        function loadDailyExchangeRate() {
+            const savedRate = Number(localStorage.getItem(`usdKhrRate_${getLocalDateKey()}`));
+            document.getElementById('usd-khr-rate').value = Number.isFinite(savedRate) && savedRate > 0 ? String(savedRate) : '4100';
+        }
 
         // Initialize App & Authentication
         async function initApp() {
@@ -498,9 +658,11 @@
                 // Start listening to real-time cloud data
                 initDataListeners();
                 
+                document.getElementById('current-date').valueAsDate = new Date();
+                loadDailyExchangeRate();
                 // Load unsaved draft if exists
                 loadDraft();
-                document.getElementById('current-date').valueAsDate = new Date();
+                window.calculateTotals();
                 
                 // Event listeners for auto-save draft
                 document.getElementById('invoice-container').addEventListener('input', window.autoSaveDraft);
@@ -571,9 +733,16 @@
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'customers'), (snapshot) => {
                 customerList = [];
                 snapshot.forEach(d => customerList.push({ id: d.id, ...d.data() }));
+                isCustomerListLoaded = true;
+                customerListLoadError = null;
                 updateCustomerDatalist();
                 if(document.getElementById('customer-modal').classList.contains('flex')) window.renderDashboardCustomers();
-            }, (error) => console.error(error));
+            }, (error) => {
+                console.error("Customer listener failed:", error);
+                isCustomerListLoaded = true;
+                customerListLoadError = error;
+                document.getElementById('customer-payment-status').textContent = `Could not load customers: ${describeFirebaseError(error)}`;
+            });
 
             // Watch Invoices Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'invoices'), (snapshot) => {
@@ -581,6 +750,7 @@
                 snapshot.forEach(d => invoiceHistoryList.push({ id: d.id, ...d.data() }));
                 invoiceHistoryList.sort((a, b) => b.id.localeCompare(a.id)); // Sort newest first
                 if(document.getElementById('invoice-history-modal').classList.contains('flex')) window.renderInvoiceHistory();
+                if (document.getElementById('customer-modal').classList.contains('flex')) window.renderDashboardCustomers();
                 if (document.getElementById('report-modal').classList.contains('flex')) window.renderBusinessReport();
             }, (error) => console.error(error));
 
@@ -617,6 +787,8 @@
                 customerAddress: document.getElementById('client-address-input').value,
                 date: document.getElementById('current-date').value,
                 unpaidBill: document.getElementById('unpaid-bill').value,
+                cashReceived: document.getElementById('cash-received').value,
+                cashCurrency: document.getElementById('cash-currency').value,
                 note: document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]').value,
                 items: []
             };
@@ -641,6 +813,8 @@
                     
                     const unpaidBillInput = document.getElementById('unpaid-bill');
                     if(unpaidBillInput) unpaidBillInput.value = draft.unpaidBill || '0.00';
+                    document.getElementById('cash-received').value = draft.cashReceived || '0';
+                    document.getElementById('cash-currency').value = draft.cashCurrency === 'KHR' ? 'KHR' : 'USD';
                     
                     const noteTextarea = document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]');
                     if(noteTextarea) noteTextarea.value = draft.note || "ទំនិញ ដែល ទិញហើយ មិនអាច ប្តូរវិញបានទេ";
@@ -755,11 +929,90 @@
             });
             const unpaidBillInput = document.getElementById('unpaid-bill');
             const unpaidBill = unpaidBillInput ? (parseFloat(unpaidBillInput.value) || 0) : 0;
-            const grandTotal = subtotal + unpaidBill;
+            const grandTotal = Math.round((subtotal + unpaidBill) * 100) / 100;
 
             document.getElementById('subtotal').textContent = subtotal.toFixed(2);
             document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
+            const payment = calculatePaymentSummary(grandTotal);
+            if (payment) {
+                document.getElementById('grand-total-khr').textContent = `៛${Math.round(grandTotal * payment.rate).toLocaleString()}`;
+                document.getElementById('exchange-rate-display').textContent = payment.rate.toLocaleString();
+                document.getElementById('change-due-usd').textContent = `$${payment.changeDueUsd.toFixed(2)}`;
+                document.getElementById('change-due-khr').textContent = `៛${payment.changeDueKhr.toLocaleString()}`;
+                document.getElementById('balance-due-usd').textContent = `$${payment.balanceDueUsd.toFixed(2)}`;
+                document.getElementById('balance-due-khr').textContent = `៛${Math.round(payment.balanceDueUsd * payment.rate).toLocaleString()}`;
+            } else {
+                document.getElementById('grand-total-khr').textContent = 'Check exchange rate';
+                document.getElementById('change-due-usd').textContent = '--';
+                document.getElementById('change-due-khr').textContent = '--';
+                document.getElementById('balance-due-usd').textContent = '--';
+                document.getElementById('balance-due-khr').textContent = '--';
+            }
             window.autoSaveDraft();
+        }
+
+        window.printPosReceipt = function() {
+            const grandTotal = Number(document.getElementById('grand-total').textContent) || 0;
+            const payment = calculatePaymentSummary(grandTotal);
+            if (!payment) {
+                showSaveStatus('Enter a valid USD to KHR exchange rate before printing.', 'error');
+                return;
+            }
+
+            const receipt = document.getElementById('pos-receipt');
+            receipt.replaceChildren();
+            const addText = (tag, text, className = '') => {
+                const element = document.createElement(tag);
+                element.textContent = text;
+                if (className) element.className = className;
+                receipt.appendChild(element);
+                return element;
+            };
+            addText('h1', 'INVOICE');
+            addText('p', `Customer: ${document.getElementById('client-name-input').value.trim() || '-'}`);
+            addText('p', `Date: ${document.getElementById('current-date').value || '-'}`);
+
+            const table = document.createElement('table');
+            const header = table.createTHead().insertRow();
+            ['Item', 'Qty', 'Total'].forEach((label, index) => {
+                const cell = document.createElement('th');
+                cell.textContent = label;
+                if (index > 0) cell.className = 'receipt-right';
+                header.appendChild(cell);
+            });
+            const body = table.createTBody();
+            document.querySelectorAll('.item-row').forEach(row => {
+                const name = row.querySelector('input[list="product-datalist"]').value.trim();
+                if (!name) return;
+                const quantity = Number(row.querySelector('.qty-input').value) || 0;
+                const price = Number(row.querySelector('.price-input').value) || 0;
+                const receiptRow = body.insertRow();
+                [name, String(quantity), `$${(quantity * price).toFixed(2)}`].forEach((value, index) => {
+                    const cell = receiptRow.insertCell();
+                    cell.textContent = value;
+                    if (index > 0) cell.className = 'receipt-right';
+                });
+            });
+            receipt.appendChild(table);
+            const unpaidBill = Number(document.getElementById('unpaid-bill').value) || 0;
+            if (unpaidBill > 0) addText('p', `Unpaid bill: $${unpaidBill.toFixed(2)}`, 'receipt-right');
+            addText('p', `Grand total: $${grandTotal.toFixed(2)}`, 'receipt-total receipt-right');
+            addText('p', `Grand total: ៛${Math.round(grandTotal * payment.rate).toLocaleString()}`, 'receipt-right');
+            addText('p', `Rate: ៛${payment.rate.toLocaleString()} / $1`, 'receipt-right');
+            addText('p', `Cash received: ${payment.currency === 'KHR' ? `៛${payment.tenderAmount.toLocaleString()}` : `$${payment.tenderAmount.toFixed(2)}`}`, 'receipt-right');
+            addText('p', `Balance due: $${payment.balanceDueUsd.toFixed(2)} / ៛${Math.round(payment.balanceDueUsd * payment.rate).toLocaleString()}`, 'receipt-right');
+            addText('p', `Change: $${payment.changeDueUsd.toFixed(2)} / ៛${payment.changeDueKhr.toLocaleString()}`, 'receipt-right');
+            addText('p', 'Thank you!', 'receipt-footer');
+
+            const selectedWidth = document.getElementById('receipt-width').value;
+            const bodyElement = document.body;
+            const clearReceiptPrintMode = () => {
+                bodyElement.classList.remove('print-receipt', 'receipt-58', 'receipt-80');
+            };
+            bodyElement.classList.remove('receipt-58', 'receipt-80');
+            bodyElement.classList.add('print-receipt', `receipt-${selectedWidth}`);
+            window.addEventListener('afterprint', clearReceiptPrintMode, { once: true });
+            window.print();
         }
 
         window.saveCurrentInvoice = async function() {
@@ -776,6 +1029,19 @@
             
             if (!customerName) {
                 showSaveStatus('Please enter a customer name before saving.', 'error');
+                return;
+            }
+            if (!isCustomerListLoaded) {
+                showSaveStatus('Please wait for the customer list to load before saving this invoice.', 'error');
+                return;
+            }
+            if (customerListLoadError) {
+                showSaveStatus(`Cannot save because customers could not be loaded: ${describeFirebaseError(customerListLoadError)}`, 'error');
+                return;
+            }
+            const exchangeRate = getDailyExchangeRate();
+            if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+                showSaveStatus('Enter a valid USD to KHR exchange rate greater than zero.', 'error');
                 return;
             }
 
@@ -799,7 +1065,28 @@
                     subtotal += (parseFloat(qty) || 0) * (parseFloat(price) || 0);
                 }
             });
-            invoiceData.grandTotal = subtotal + (parseFloat(invoiceData.unpaidBill) || 0);
+            invoiceData.grandTotal = Math.round((subtotal + (parseFloat(invoiceData.unpaidBill) || 0)) * 100) / 100;
+            if (!Number.isFinite(invoiceData.grandTotal) || invoiceData.grandTotal < 0) {
+                showSaveStatus('Invoice total must be zero or greater.', 'error');
+                return;
+            }
+            const payment = calculatePaymentSummary(invoiceData.grandTotal);
+            if (!payment) {
+                showSaveStatus('Enter a valid exchange rate and cash amount before saving.', 'error');
+                return;
+            }
+            const matchingCustomer = customerList.find(customer =>
+                (customer.name || '').trim().toLowerCase() === customerName.toLowerCase()
+            );
+            const customerId = matchingCustomer?.id || `cust_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            invoiceData.customerId = customerId;
+            invoiceData.exchangeRate = payment.rate;
+            invoiceData.cashReceived = payment.tenderAmount;
+            invoiceData.cashCurrency = payment.currency;
+            invoiceData.paymentAppliedUsd = payment.paymentAppliedUsd;
+            invoiceData.balanceDueUsd = payment.balanceDueUsd;
+            invoiceData.changeDueUsd = payment.changeDueUsd;
+            invoiceData.changeDueKhr = payment.changeDueKhr;
             if (invoiceData.items.length > 0 && !isProductListLoaded) {
                 showSaveStatus('Please wait for the product and stock list to load before saving this invoice.', 'error');
                 return;
@@ -826,13 +1113,17 @@
                 });
 
                 const invoiceRef = doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id);
+                const customerRef = doc(db, 'artifacts', appId, 'users', userId, 'customers', customerId);
                 await runTransaction(db, async transaction => {
                     const sales = Array.from(saleQuantities.values());
-                    const snapshots = await Promise.all(sales.map(({ product }) =>
-                        transaction.get(doc(db, 'artifacts', appId, 'users', userId, 'products', product.id))
-                    ));
+                    const [customerSnapshot, ...productSnapshots] = await Promise.all([
+                        transaction.get(customerRef),
+                        ...sales.map(({ product }) =>
+                            transaction.get(doc(db, 'artifacts', appId, 'users', userId, 'products', product.id))
+                        )
+                    ]);
                     const saleUpdates = sales.map(({ product, quantity }, index) => {
-                        const snapshot = snapshots[index];
+                        const snapshot = productSnapshots[index];
                         if (!snapshot.exists()) throw new Error(`Product "${product.name}" no longer exists.`);
                         const currentStock = snapshot.data().stock;
                         if (!Number.isInteger(currentStock) || currentStock < quantity) {
@@ -854,6 +1145,15 @@
                             quantity
                         }))
                     };
+                    const customerData = customerSnapshot.exists() ? customerSnapshot.data() : {};
+                    transaction.set(customerRef, {
+                        name: customerData.name || customerName,
+                        phone: customerData.phone || '',
+                        address: customerData.address || invoiceData.customerAddress || '',
+                        balanceUsd: Math.round(((Number(customerData.balanceUsd) || 0) + payment.balanceDueUsd) * 100) / 100,
+                        totalPaymentsUsd: Math.round(((Number(customerData.totalPaymentsUsd) || 0) + payment.paymentAppliedUsd) * 100) / 100,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
                     transaction.set(invoiceRef, savedInvoiceData);
                     saleUpdates.forEach(({ product, quantity, nextStock }) => {
                         const productRef = doc(db, 'artifacts', appId, 'users', userId, 'products', product.id);
@@ -873,13 +1173,11 @@
 
                 // Handle max limit directly in cloud by deleting oldest if exceeded
                 if (invoiceHistoryList.length >= MAX_INVOICES) {
-                    const oldest = invoiceHistoryList[invoiceHistoryList.length - 1];
-                    try {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', oldest.id));
-                    } catch (error) {
-                        console.error("Invoice saved, but old invoice cleanup failed:", error);
-                        showSaveStatus('Invoice saved, but an old invoice could not be removed.', 'error');
-                        return;
+                    const oldestPaidInvoice = [...invoiceHistoryList].reverse().find(invoice =>
+                        (Number(invoice.balanceDueUsd) || 0) <= 0
+                    );
+                    if (oldestPaidInvoice) {
+                        await window.deleteInvoice(oldestPaidInvoice.id);
                     }
                 }
                 showSaveStatus('Invoice saved to Firebase.', 'success');
@@ -932,6 +1230,11 @@
             document.getElementById('client-name-input').value = inv.customerName;
             document.getElementById('client-address-input').value = inv.customerAddress;
             document.getElementById('current-date').value = inv.date;
+            if (Number.isFinite(Number(inv.exchangeRate)) && Number(inv.exchangeRate) > 0) {
+                document.getElementById('usd-khr-rate').value = String(inv.exchangeRate);
+            }
+            document.getElementById('cash-received').value = Number(inv.cashReceived) || 0;
+            document.getElementById('cash-currency').value = inv.cashCurrency === 'KHR' ? 'KHR' : 'USD';
             const unpaidBillInput = document.getElementById('unpaid-bill');
             if(unpaidBillInput) unpaidBillInput.value = inv.unpaidBill;
             const noteTextarea = document.querySelector('textarea[placeholder="បញ្ចូលចំណាំបន្ថែមទីនេះ..."]');
@@ -967,6 +1270,9 @@
                     const invoiceSnapshot = await transaction.get(invoiceRef);
                     if (!invoiceSnapshot.exists()) return;
                     const invoice = invoiceSnapshot.data();
+                    const customerRef = typeof invoice.customerId === 'string'
+                        ? doc(db, 'artifacts', appId, 'users', userId, 'customers', invoice.customerId)
+                        : null;
                     const adjustments = invoice.stockDeducted && Array.isArray(invoice.stockAdjustments)
                         ? invoice.stockAdjustments.filter(adjustment =>
                             typeof adjustment.productId === 'string' &&
@@ -980,8 +1286,17 @@
                     const productSnapshots = await Promise.all(productRefs.map(productRef =>
                         transaction.get(productRef)
                     ));
+                    const customerSnapshot = customerRef ? await transaction.get(customerRef) : null;
 
                     transaction.delete(invoiceRef);
+                    if (customerSnapshot?.exists()) {
+                        const remainingDebt = Math.max(0, Number(customerSnapshot.data().balanceUsd) || 0);
+                        const invoiceDebt = Math.max(0, Number(invoice.balanceDueUsd) || 0);
+                        transaction.update(customerRef, {
+                            balanceUsd: Math.round(Math.max(0, remainingDebt - invoiceDebt) * 100) / 100,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
                     adjustments.forEach((adjustment, index) => {
                         const productSnapshot = productSnapshots[index];
                         if (!productSnapshot.exists()) return;
@@ -1019,39 +1334,214 @@
 
         window.renderDashboardCustomers = function() {
             const tbody = document.getElementById('dashboard-customer-list');
-            tbody.innerHTML = '';
-            for (let i = 0; i < customerList.length; i++) {
-                const c = customerList[i];
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 px-3 text-gray-800">${c.name}</td>
-                        <td class="py-2 px-3 text-gray-600">${c.phone}</td>
-                        <td class="py-2 px-3 text-gray-600">${c.address}</td>
-                        <td class="py-2 px-3 text-center">
-                            <button onclick="deleteCustomer('${c.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </td>
-                    </tr>
-                `;
+            tbody.replaceChildren();
+            if (customerList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 7;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = isCustomerListLoaded ? 'No customers yet.' : 'Loading customers...';
+                return;
             }
+            customerList.forEach(customer => {
+                const row = tbody.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+                [customer.name || '', customer.phone || '', customer.address || ''].forEach(value => {
+                    const cell = row.insertCell();
+                    cell.className = 'py-2 px-3 text-gray-700';
+                    cell.textContent = value;
+                });
+
+                const balanceUsd = Math.max(0, Number(customer.balanceUsd) || 0);
+                const balanceCell = row.insertCell();
+                balanceCell.className = 'py-2 px-3 text-right font-semibold text-gray-800';
+                balanceCell.textContent = `$${balanceUsd.toFixed(2)}`;
+
+                const billsCell = row.insertCell();
+                billsCell.className = 'py-2 px-3 text-sm text-gray-700';
+                const unpaidInvoices = invoiceHistoryList.filter(invoice =>
+                    invoice.customerId === customer.id && Number(invoice.balanceDueUsd) > 0
+                );
+                if (unpaidInvoices.length) {
+                    unpaidInvoices.forEach(invoice => {
+                        const bill = document.createElement('div');
+                        bill.textContent = `${invoice.date || 'Undated'} · ${invoice.id}: $${Number(invoice.balanceDueUsd).toFixed(2)}`;
+                        billsCell.appendChild(bill);
+                    });
+                } else {
+                    billsCell.textContent = '—';
+                }
+
+                const paymentCell = row.insertCell();
+                paymentCell.className = 'py-2 px-3';
+                if (balanceUsd > 0) {
+                    const controls = document.createElement('div');
+                    controls.className = 'flex min-w-56 gap-1';
+                    const amountInput = document.createElement('input');
+                    amountInput.type = 'number';
+                    amountInput.min = '0.01';
+                    amountInput.step = '0.01';
+                    amountInput.placeholder = 'Amount';
+                    amountInput.className = 'border rounded px-2 py-1 w-24';
+                    const currencySelect = document.createElement('select');
+                    currencySelect.className = 'border rounded px-1 py-1';
+                    [['USD', 'USD'], ['KHR', 'KHR']].forEach(([value, label]) => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = label;
+                        currencySelect.appendChild(option);
+                    });
+                    const paymentButton = document.createElement('button');
+                    paymentButton.type = 'button';
+                    paymentButton.className = 'bg-green-600 hover:bg-green-700 text-white rounded px-2 py-1 text-sm';
+                    paymentButton.textContent = 'Pay';
+                    paymentButton.addEventListener('click', async () => {
+                        paymentButton.disabled = true;
+                        await window.recordCustomerPayment(customer.id, amountInput.value, currencySelect.value);
+                        paymentButton.disabled = false;
+                    });
+                    controls.append(amountInput, currencySelect, paymentButton);
+                    paymentCell.appendChild(controls);
+                } else {
+                    paymentCell.textContent = 'No balance due';
+                    paymentCell.className += ' text-gray-500';
+                }
+
+                const actionCell = row.insertCell();
+                actionCell.className = 'py-2 px-3 text-center';
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'text-red-500 hover:text-red-700 p-1 disabled:opacity-40';
+                deleteButton.title = balanceUsd > 0 ? 'Clear customer balance before deleting' : 'Delete customer';
+                deleteButton.textContent = 'Delete';
+                deleteButton.disabled = balanceUsd > 0;
+                deleteButton.addEventListener('click', () => window.deleteCustomer(customer.id));
+                actionCell.appendChild(deleteButton);
+            });
         }
 
         window.addNewCustomer = async function() {
-            if (!userId) return;
+            const status = document.getElementById('customer-payment-status');
+            if (!userId) {
+                status.textContent = 'Connect to Firebase before adding customers.';
+                return;
+            }
             const name = document.getElementById('new-customer-name').value.trim();
             const phone = document.getElementById('new-customer-phone').value.trim();
             const address = document.getElementById('new-customer-address').value.trim();
-            if (name) {
+            if (!name) {
+                status.textContent = 'Enter a customer name.';
+                return;
+            }
+            try {
                 const id = 'cust_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
-                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id), { name, phone, address });
+                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id), {
+                    name, phone, address, balanceUsd: 0, totalPaymentsUsd: 0
+                });
                 document.getElementById('new-customer-name').value = '';
                 document.getElementById('new-customer-phone').value = '';
                 document.getElementById('new-customer-address').value = '';
+                status.textContent = 'Customer added.';
+            } catch (error) {
+                console.error('Customer creation failed:', error);
+                status.textContent = `Could not add customer: ${describeFirebaseError(error)}`;
+            }
+        }
+
+        window.recordCustomerPayment = async function(customerId, amountValue, currency) {
+            const status = document.getElementById('customer-payment-status');
+            if (!userId) {
+                status.textContent = 'Connect to Firebase before recording a payment.';
+                return;
+            }
+            const amount = Number(amountValue);
+            const rate = getDailyExchangeRate();
+            if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate <= 0) {
+                status.textContent = 'Enter a positive payment amount and a valid daily exchange rate.';
+                return;
+            }
+            const amountUsd = Math.round((currency === 'KHR' ? amount / rate : amount) * 100) / 100;
+            if (amountUsd <= 0) {
+                status.textContent = 'The payment must be at least one cent USD after currency conversion.';
+                return;
+            }
+
+            const customerRef = doc(db, 'artifacts', appId, 'users', userId, 'customers', customerId);
+            const invoicesQuery = query(
+                collection(db, 'artifacts', appId, 'users', userId, 'invoices'),
+                where('customerId', '==', customerId)
+            );
+            const paymentRef = doc(collection(db, 'artifacts', appId, 'users', userId, 'customers', customerId, 'payments'));
+            status.textContent = 'Recording customer payment...';
+            try {
+                await runTransaction(db, async transaction => {
+                    const [customerSnapshot, invoiceSnapshot] = await Promise.all([
+                        transaction.get(customerRef),
+                        transaction.get(invoicesQuery)
+                    ]);
+                    if (!customerSnapshot.exists()) throw new Error('Customer no longer exists.');
+                    const customer = customerSnapshot.data();
+                    const currentBalance = Math.max(0, Number(customer.balanceUsd) || 0);
+                    if (amountUsd - currentBalance > 0.005) {
+                        throw new Error(`Payment exceeds the outstanding balance of $${currentBalance.toFixed(2)}.`);
+                    }
+
+                    const outstandingInvoices = invoiceSnapshot.docs
+                        .map(invoiceDoc => ({ ref: invoiceDoc.ref, data: invoiceDoc.data() }))
+                        .filter(invoice => Number(invoice.data.balanceDueUsd) > 0)
+                        .sort((left, right) => (left.data.date || '').localeCompare(right.data.date || ''));
+                    let remainingPayment = amountUsd;
+                    const allocations = [];
+                    outstandingInvoices.forEach(invoice => {
+                        if (remainingPayment <= 0) return;
+                        const invoiceBalance = Math.round(Number(invoice.data.balanceDueUsd) * 100) / 100;
+                        const applied = Math.min(invoiceBalance, remainingPayment);
+                        const nextBalance = Math.round((invoiceBalance - applied) * 100) / 100;
+                        remainingPayment = Math.round((remainingPayment - applied) * 100) / 100;
+                        allocations.push({ ref: invoice.ref, invoiceId: invoice.ref.id, applied, nextBalance });
+                    });
+                    if (remainingPayment > 0.005) {
+                        throw new Error('Customer balance does not match outstanding invoices. Refresh and check the invoice history.');
+                    }
+
+                    allocations.forEach(allocation => {
+                        transaction.update(allocation.ref, { balanceDueUsd: allocation.nextBalance });
+                    });
+                    transaction.update(customerRef, {
+                        balanceUsd: Math.round(Math.max(0, currentBalance - amountUsd) * 100) / 100,
+                        totalPaymentsUsd: Math.round(((Number(customer.totalPaymentsUsd) || 0) + amountUsd) * 100) / 100,
+                        updatedAt: new Date().toISOString()
+                    });
+                    transaction.set(paymentRef, {
+                        amount,
+                        currency,
+                        amountUsd,
+                        exchangeRate: rate,
+                        allocations: allocations.map(({ invoiceId, applied }) => ({ invoiceId, amountUsd: applied })),
+                        createdAt: new Date().toISOString()
+                    });
+                });
+                status.textContent = `Payment of $${amountUsd.toFixed(2)} recorded.`;
+            } catch (error) {
+                console.error('Customer payment failed:', error);
+                status.textContent = `Could not record payment: ${error.message || describeFirebaseError(error)}`;
             }
         }
 
         window.deleteCustomer = async function(id) {
             if (!userId) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id));
+            const customer = customerList.find(item => item.id === id);
+            if ((Number(customer?.balanceUsd) || 0) > 0) {
+                document.getElementById('customer-payment-status').textContent = 'Record payment or settle the balance before deleting this customer.';
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'customers', id));
+                document.getElementById('customer-payment-status').textContent = 'Customer deleted.';
+            } catch (error) {
+                console.error('Customer deletion failed:', error);
+                document.getElementById('customer-payment-status').textContent = `Could not delete customer: ${describeFirebaseError(error)}`;
+            }
         }
 
         window.openProductDashboard = function() {
