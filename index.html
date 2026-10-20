@@ -188,7 +188,7 @@
 
     <!-- Product Dashboard Modal (Hidden by default) -->
     <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
-        <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Product Dashboard</h2>
                 <button onclick="closeProductDashboard()" class="text-gray-500 hover:text-gray-700">
@@ -196,24 +196,52 @@
                 </button>
             </div>
             
-            <div class="mb-4 flex gap-2">
-                <input type="text" id="new-product-name" placeholder="Product Name" class="border rounded px-3 py-2 flex-1 outline-none focus:border-blue-500">
-                <input type="number" id="new-product-price" placeholder="Price ($)" class="border rounded px-3 py-2 w-24 outline-none focus:border-blue-500" min="0" step="0.01">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4">
+                <input type="text" id="new-product-name" placeholder="Product Name" class="border rounded px-3 py-2 outline-none focus:border-blue-500">
+                <input type="number" id="new-product-price" placeholder="Price ($)" class="border rounded px-3 py-2 outline-none focus:border-blue-500" min="0" step="0.01">
+                <input type="number" id="new-product-stock" placeholder="Opening stock" class="border rounded px-3 py-2 outline-none focus:border-blue-500" min="0" step="1" value="0">
+                <input type="number" id="new-product-low-stock" placeholder="Low-stock alert" class="border rounded px-3 py-2 outline-none focus:border-blue-500" min="0" step="1" value="5">
                 <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded">Add</button>
             </div>
 
+            <div class="flex flex-wrap gap-2 mb-3">
+                <button onclick="exportProductsCsv()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded">Export products CSV</button>
+                <button onclick="exportStockMovementsCsv()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-3 py-2 rounded">Export stock history CSV</button>
+                <label class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-2 rounded cursor-pointer">
+                    Import products CSV
+                    <input type="file" accept=".csv,text/csv" class="hidden" onchange="importProductsCsv(event)">
+                </label>
+                <p class="w-full text-sm text-gray-500">Excel-compatible CSV columns: Name, Price, Stock, LowStockThreshold. Import updates matching product names.</p>
+            </div>
+            <p id="inventory-status" class="text-sm text-gray-600 mb-3" role="status" aria-live="polite"></p>
             <div class="max-h-60 overflow-y-auto border rounded">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-2 px-3 border-b text-gray-700">Product Name</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Product</th>
                             <th class="py-2 px-3 w-24 text-right border-b text-gray-700">Price</th>
-                            <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Action</th>
+                            <th class="py-2 px-3 w-20 text-right border-b text-gray-700">In Stock</th>
+                            <th class="py-2 px-3 w-44 text-center border-b text-gray-700">Stock In / Out</th>
+                            <th class="py-2 px-3 w-16 text-center border-b text-gray-700">Delete</th>
                         </tr>
                     </thead>
                     <tbody id="dashboard-product-list">
                         <!-- Populated by JS -->
                     </tbody>
+                </table>
+            </div>
+            <h3 class="font-semibold text-gray-800 mt-5 mb-2">Recent stock movements</h3>
+            <div class="max-h-48 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">Date</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Product</th>
+                            <th class="py-2 px-3 border-b text-gray-700">Movement</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-movement-list"></tbody>
                 </table>
             </div>
         </div>
@@ -347,7 +375,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Hardcoded Firebase Configuration from your project setup
         const appId = 'pov-store-app';
@@ -399,6 +427,8 @@
         let userId = null;
         let customerList = [];
         let productList = [];
+        let stockMovementList = [];
+        let isProductListLoaded = false;
         let invoiceHistoryList = [];
         let expenseList = [];
         const MAX_INVOICES = 500;
@@ -475,9 +505,22 @@
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'products'), (snapshot) => {
                 productList = [];
                 snapshot.forEach(d => productList.push({ id: d.id, ...d.data() }));
+                isProductListLoaded = true;
                 updateProductDatalist();
-                if(document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
+                if (document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
             }, (error) => console.error(error));
+
+            onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'stockMovements'), (snapshot) => {
+                stockMovementList = [];
+                snapshot.forEach(d => stockMovementList.push({ id: d.id, ...d.data() }));
+                stockMovementList.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+                if (document.getElementById('product-modal').classList.contains('flex')) {
+                    window.renderStockMovements();
+                }
+            }, (error) => {
+                console.error("Stock movement listener failed:", error);
+                showInventoryStatus(`Could not load stock movements: ${describeFirebaseError(error)}`, 'error');
+            });
 
             // Watch Customers Collection
             onSnapshot(collection(db, 'artifacts', appId, 'users', userId, 'customers'), (snapshot) => {
@@ -710,12 +753,75 @@
                 }
             });
             invoiceData.grandTotal = subtotal + (parseFloat(invoiceData.unpaidBill) || 0);
+            if (invoiceData.items.length > 0 && !isProductListLoaded) {
+                showSaveStatus('Please wait for the product and stock list to load before saving this invoice.', 'error');
+                return;
+            }
 
             isSavingInvoice = true;
             btn.disabled = true;
             showSaveStatus('Saving invoice to Firebase...', 'info');
             try {
-                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id), invoiceData);
+                const productsByName = new Map(productList.map(product => [product.name.trim().toLowerCase(), product]));
+                const saleQuantities = new Map();
+                invoiceData.items.forEach(item => {
+                    const product = productsByName.get(item.name.trim().toLowerCase());
+                    if (!product || !Number.isInteger(product.stock) || product.stock < 0) return;
+                    const quantity = Number(item.qty);
+                    if (!Number.isInteger(quantity) || quantity <= 0) {
+                        throw new Error(`Quantity for ${product.name} must be a whole number to update stock.`);
+                    }
+                    const existing = saleQuantities.get(product.id);
+                    saleQuantities.set(product.id, {
+                        product,
+                        quantity: (existing?.quantity || 0) + quantity
+                    });
+                });
+
+                const invoiceRef = doc(db, 'artifacts', appId, 'users', userId, 'invoices', invoiceData.id);
+                await runTransaction(db, async transaction => {
+                    const sales = Array.from(saleQuantities.values());
+                    const snapshots = await Promise.all(sales.map(({ product }) =>
+                        transaction.get(doc(db, 'artifacts', appId, 'users', userId, 'products', product.id))
+                    ));
+                    const saleUpdates = sales.map(({ product, quantity }, index) => {
+                        const snapshot = snapshots[index];
+                        if (!snapshot.exists()) throw new Error(`Product "${product.name}" no longer exists.`);
+                        const currentStock = snapshot.data().stock;
+                        if (!Number.isInteger(currentStock) || currentStock < quantity) {
+                            throw new Error(`Not enough stock for ${product.name}. Available: ${Number.isInteger(currentStock) ? currentStock : 0}.`);
+                        }
+                        return {
+                            product,
+                            quantity,
+                            nextStock: currentStock - quantity
+                        };
+                    });
+
+                    const savedInvoiceData = {
+                        ...invoiceData,
+                        stockDeducted: saleUpdates.length > 0,
+                        stockAdjustments: saleUpdates.map(({ product, quantity }) => ({
+                            productId: product.id,
+                            productName: product.name,
+                            quantity
+                        }))
+                    };
+                    transaction.set(invoiceRef, savedInvoiceData);
+                    saleUpdates.forEach(({ product, quantity, nextStock }) => {
+                        const productRef = doc(db, 'artifacts', appId, 'users', userId, 'products', product.id);
+                        const movementRef = doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', `${invoiceData.id}_${product.id}`);
+                        transaction.update(productRef, { stock: nextStock });
+                        transaction.set(movementRef, {
+                            productId: product.id,
+                            productName: product.name,
+                            type: 'stock-out',
+                            quantity,
+                            reason: `Invoice ${invoiceData.id}`,
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                });
                 localStorage.removeItem('invoiceDraft');
 
                 // Handle max limit directly in cloud by deleting oldest if exceeded
@@ -732,7 +838,7 @@
                 showSaveStatus('Invoice saved to Firebase.', 'success');
             } catch (error) {
                 console.error("Invoice save failed:", error);
-                showSaveStatus(`Could not save invoice: ${describeFirebaseError(error)}`, 'error');
+                showSaveStatus(`Could not save invoice: ${error.message || describeFirebaseError(error)}`, 'error');
             } finally {
                 isSavingInvoice = false;
                 btn.disabled = false;
@@ -808,7 +914,49 @@
 
         window.deleteInvoice = async function(id) {
             if (!userId) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'invoices', id));
+            const invoiceRef = doc(db, 'artifacts', appId, 'users', userId, 'invoices', id);
+            try {
+                await runTransaction(db, async transaction => {
+                    const invoiceSnapshot = await transaction.get(invoiceRef);
+                    if (!invoiceSnapshot.exists()) return;
+                    const invoice = invoiceSnapshot.data();
+                    const adjustments = invoice.stockDeducted && Array.isArray(invoice.stockAdjustments)
+                        ? invoice.stockAdjustments.filter(adjustment =>
+                            typeof adjustment.productId === 'string' &&
+                            Number.isInteger(adjustment.quantity) &&
+                            adjustment.quantity > 0
+                        )
+                        : [];
+                    const productRefs = adjustments.map(adjustment =>
+                        doc(db, 'artifacts', appId, 'users', userId, 'products', adjustment.productId)
+                    );
+                    const productSnapshots = await Promise.all(productRefs.map(productRef =>
+                        transaction.get(productRef)
+                    ));
+
+                    transaction.delete(invoiceRef);
+                    adjustments.forEach((adjustment, index) => {
+                        const productSnapshot = productSnapshots[index];
+                        if (!productSnapshot.exists()) return;
+                        const productRef = productRefs[index];
+                        const stock = productSnapshot.data().stock;
+                        const currentStock = Number.isInteger(stock) && stock >= 0 ? stock : 0;
+                        transaction.update(productRef, { stock: currentStock + adjustment.quantity });
+                        const movementRef = doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', `invoice-delete_${id}_${adjustment.productId}`);
+                        transaction.set(movementRef, {
+                            productId: adjustment.productId,
+                            productName: productSnapshot.data().name || adjustment.productName || '',
+                            type: 'stock-in',
+                            quantity: adjustment.quantity,
+                            reason: `Invoice ${id} deleted`,
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                });
+            } catch (error) {
+                console.error("Invoice deletion failed:", error);
+                showSaveStatus(`Could not delete invoice: ${error.message || describeFirebaseError(error)}`, 'error');
+            }
         }
 
         window.openCustomerDashboard = function() {
@@ -872,31 +1020,377 @@
 
         window.renderDashboardProducts = function() {
             const tbody = document.getElementById('dashboard-product-list');
-            tbody.innerHTML = '';
-            for (let i = 0; i < productList.length; i++) {
-                const p = productList[i];
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 px-3 text-gray-800">${p.name}</td>
-                        <td class="py-2 px-3 text-right text-gray-600">$${p.price.toFixed(2)}</td>
-                        <td class="py-2 px-3 text-center">
-                            <button onclick="deleteProduct('${p.id}')" class="text-red-500 hover:text-red-700 p-1" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </td>
-                    </tr>
-                `;
+            tbody.replaceChildren();
+            if (productList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 5;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = 'No products yet.';
+                window.renderStockMovements();
+                return;
             }
+
+            productList.forEach(product => {
+                const row = tbody.insertRow();
+                row.className = 'border-b hover:bg-gray-50';
+
+                const nameCell = row.insertCell();
+                nameCell.className = 'py-2 px-3 text-gray-800';
+                nameCell.textContent = product.name || '';
+
+                const priceCell = row.insertCell();
+                priceCell.className = 'py-2 px-3 text-right text-gray-600';
+                priceCell.textContent = `$${(Number(product.price) || 0).toFixed(2)}`;
+
+                const stockCell = row.insertCell();
+                const stock = Number.isInteger(product.stock) && product.stock >= 0 ? product.stock : null;
+                const threshold = Number.isInteger(product.lowStockThreshold) && product.lowStockThreshold >= 0
+                    ? product.lowStockThreshold
+                    : 5;
+                stockCell.className = `py-2 px-3 text-right font-semibold ${stock !== null && stock <= threshold ? 'text-rose-700' : 'text-gray-700'}`;
+                stockCell.textContent = stock === null ? 'Not tracked' : `${stock}${stock <= threshold ? ' (Low)' : ''}`;
+
+                const actionCell = row.insertCell();
+                actionCell.className = 'py-2 px-3';
+                const actionGroup = document.createElement('div');
+                actionGroup.className = 'flex items-center justify-center gap-1';
+                const amountInput = document.createElement('input');
+                amountInput.type = 'number';
+                amountInput.min = '1';
+                amountInput.step = '1';
+                amountInput.value = '1';
+                amountInput.className = 'w-14 border rounded px-1 py-1 text-center';
+                amountInput.setAttribute('aria-label', `Quantity to adjust for ${product.name}`);
+                const stockInButton = document.createElement('button');
+                stockInButton.type = 'button';
+                stockInButton.className = 'bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded';
+                stockInButton.textContent = '+';
+                stockInButton.title = 'Receive stock';
+                stockInButton.addEventListener('click', () => window.adjustProductStock(product.id, 'in', amountInput.value));
+                const stockOutButton = document.createElement('button');
+                stockOutButton.type = 'button';
+                stockOutButton.className = 'bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded';
+                stockOutButton.textContent = '-';
+                stockOutButton.title = 'Remove stock';
+                stockOutButton.addEventListener('click', () => window.adjustProductStock(product.id, 'out', amountInput.value));
+                actionGroup.append(amountInput, stockInButton, stockOutButton);
+                actionCell.appendChild(actionGroup);
+
+                const deleteCell = row.insertCell();
+                deleteCell.className = 'py-2 px-3 text-center';
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'text-red-500 hover:text-red-700 p-1';
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => window.deleteProduct(product.id));
+                deleteCell.appendChild(deleteButton);
+            });
+            window.renderStockMovements();
         }
 
         window.addNewProduct = async function() {
-            if (!userId) return;
+            if (!userId) {
+                showInventoryStatus('Firebase is not connected. Please wait and try again.', 'error');
+                return;
+            }
             const name = document.getElementById('new-product-name').value.trim();
             const price = parseFloat(document.getElementById('new-product-price').value);
-            if (name && !isNaN(price) && price >= 0) {
-                const id = 'prod_' + Date.now().toString() + Math.random().toString(36).substr(2, 5);
-                await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'products', id), { name, price });
+            const stock = Number(document.getElementById('new-product-stock').value);
+            const lowStockThreshold = Number(document.getElementById('new-product-low-stock').value);
+            if (!name || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0 ||
+                !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
+                showInventoryStatus('Enter a product name, valid price, and whole-number stock values.', 'error');
+                return;
+            }
+            if (productList.some(product => product.name.trim().toLowerCase() === name.toLowerCase())) {
+                showInventoryStatus('A product with this name already exists.', 'error');
+                return;
+            }
+
+            const id = 'prod_' + Date.now().toString() + Math.random().toString(36).slice(2, 7);
+            try {
+                const batch = writeBatch(db);
+                batch.set(doc(db, 'artifacts', appId, 'users', userId, 'products', id), {
+                    name,
+                    price,
+                    stock,
+                    lowStockThreshold
+                });
+                if (stock > 0) {
+                    const movementId = `movement_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                    batch.set(doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', movementId), {
+                        productId: id,
+                        productName: name,
+                        type: 'stock-in',
+                        quantity: stock,
+                        reason: 'Opening stock',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+                await batch.commit();
                 document.getElementById('new-product-name').value = '';
                 document.getElementById('new-product-price').value = '';
+                document.getElementById('new-product-stock').value = '0';
+                document.getElementById('new-product-low-stock').value = '5';
+                showInventoryStatus(`Added ${name} with ${stock} in stock.`, 'success');
+            } catch (error) {
+                console.error("Product creation failed:", error);
+                showInventoryStatus(`Could not add product: ${describeFirebaseError(error)}`, 'error');
             }
+        }
+
+        function showInventoryStatus(message, type = 'info') {
+            const status = document.getElementById('inventory-status');
+            const colors = { info: 'text-gray-600', success: 'text-green-700', error: 'text-red-600' };
+            status.textContent = message;
+            status.className = `text-sm mb-3 ${colors[type]}`;
+        }
+
+        function csvCell(value, allowFormula = false) {
+            let text = String(value ?? '');
+            if (!allowFormula && /^[=+\-@]/.test(text)) text = `'${text}`;
+            return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function parseCsv(text) {
+            const rows = [];
+            let row = [];
+            let field = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (inQuotes) {
+                    if (char === '"' && text[i + 1] === '"') {
+                        field += '"';
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = false;
+                    } else {
+                        field += char;
+                    }
+                } else if (char === '"' && field.length === 0) {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    row.push(field);
+                    field = '';
+                } else if (char === '\n' || char === '\r') {
+                    if (char === '\r' && text[i + 1] === '\n') i++;
+                    row.push(field);
+                    if (row.some(value => value.trim() !== '')) rows.push(row);
+                    row = [];
+                    field = '';
+                } else {
+                    field += char;
+                }
+            }
+            if (inQuotes) throw new Error('CSV contains an unclosed quoted field.');
+            row.push(field);
+            if (row.some(value => value.trim() !== '')) rows.push(row);
+            return rows;
+        }
+
+        function downloadCsv(filename, rows, formulaColumns = []) {
+            const csv = '\uFEFF' + rows.map((row, rowIndex) =>
+                row.map((cell, columnIndex) => csvCell(cell, rowIndex > 0 && formulaColumns.includes(columnIndex))).join(',')
+            ).join('\r\n');
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        window.exportProductsCsv = function() {
+            const rows = [['Name', 'Price', 'Stock', 'LowStockThreshold', 'StockValue']];
+            productList.forEach((product, index) => rows.push([
+                product.name,
+                product.price,
+                Number.isInteger(product.stock) ? product.stock : '',
+                Number.isInteger(product.lowStockThreshold) ? product.lowStockThreshold : 5,
+                Number.isInteger(product.stock) ? `=B${index + 2}*C${index + 2}` : ''
+            ]));
+            downloadCsv('products.csv', rows, [4]);
+            showInventoryStatus('Products CSV exported for Excel.', 'success');
+        }
+
+        window.exportStockMovementsCsv = function() {
+            const rows = [['Date', 'Product', 'Movement', 'Quantity', 'Reason']];
+            stockMovementList.forEach(movement => rows.push([
+                movement.createdAt || '',
+                movement.productName || '',
+                movement.type || '',
+                movement.quantity,
+                movement.reason || ''
+            ]));
+            downloadCsv('stock-movements.csv', rows);
+            showInventoryStatus('Stock movement CSV exported for Excel.', 'success');
+        }
+
+        window.importProductsCsv = async function(event) {
+            const input = event.target;
+            const file = input.files?.[0];
+            if (!file) return;
+            if (!userId) {
+                showInventoryStatus('Firebase is not connected. Please wait and try again.', 'error');
+                input.value = '';
+                return;
+            }
+
+            try {
+                const rows = parseCsv(await file.text());
+                if (rows.length < 2) throw new Error('CSV must include a header row and at least one product.');
+                const headers = rows[0].map(value => value.replace(/^\uFEFF/, '').trim().toLowerCase());
+                const nameIndex = headers.indexOf('name') !== -1 ? headers.indexOf('name') : headers.indexOf('product');
+                const priceIndex = headers.indexOf('price');
+                const stockIndex = headers.indexOf('stock');
+                const thresholdIndex = headers.indexOf('lowstockthreshold');
+                if (nameIndex < 0 || priceIndex < 0) {
+                    throw new Error('CSV requires Name and Price columns. Stock and LowStockThreshold are optional.');
+                }
+                const productsByName = new Map(productList.map(product => [product.name.trim().toLowerCase(), product]));
+                const seenNames = new Set();
+                const imports = rows.slice(1).map((values, index) => {
+                    const line = index + 2;
+                    const getValue = columnIndex => columnIndex < 0 ? '' : (values[columnIndex] || '').trim();
+                    const name = getValue(nameIndex);
+                    const priceText = getValue(priceIndex);
+                    const stockText = getValue(stockIndex);
+                    const thresholdText = getValue(thresholdIndex);
+                    const price = Number(priceText);
+                    const stock = stockText === '' ? null : Number(stockText);
+                    const lowStockThreshold = thresholdText === '' ? null : Number(thresholdText);
+
+                    if (!name || !Number.isFinite(price) || price < 0) {
+                        throw new Error(`Line ${line}: product name and a non-negative price are required.`);
+                    }
+                    if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
+                        throw new Error(`Line ${line}: stock must be a whole number greater than or equal to zero.`);
+                    }
+                    if (lowStockThreshold !== null && (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0)) {
+                        throw new Error(`Line ${line}: LowStockThreshold must be a whole number greater than or equal to zero.`);
+                    }
+                    const key = name.toLowerCase();
+                    if (seenNames.has(key)) throw new Error(`Line ${line}: duplicate product name "${name}" in CSV.`);
+                    seenNames.add(key);
+                    return { name, price, stock, lowStockThreshold, existing: productsByName.get(key), line };
+                });
+                if (imports.length > 200) throw new Error('Import is limited to 200 products at a time.');
+                if (!window.confirm(`Import ${imports.length} products? Matching names will be updated, including stock when provided.`)) return;
+
+                const batch = writeBatch(db);
+                let movementCount = 0;
+                imports.forEach((product, index) => {
+                    const id = product.existing?.id || `prod_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
+                    const currentStock = Number.isInteger(product.existing?.stock) ? product.existing.stock : null;
+                    const nextStock = product.stock === null ? (product.existing ? currentStock : 0) : product.stock;
+                    const lowStockThreshold = product.lowStockThreshold ??
+                        (Number.isInteger(product.existing?.lowStockThreshold) ? product.existing.lowStockThreshold : 5);
+                    const productData = product.existing ? { ...product.existing } : {};
+                    delete productData.id;
+                    Object.assign(productData, {
+                        name: product.name,
+                        price: product.price,
+                        lowStockThreshold
+                    });
+                    if (nextStock !== null) productData.stock = nextStock;
+                    batch.set(doc(db, 'artifacts', appId, 'users', userId, 'products', id), productData);
+
+                    const quantityChange = nextStock === null ? 0 : nextStock - (currentStock ?? 0);
+                    if (quantityChange !== 0) {
+                        const movementId = `movement_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
+                        batch.set(doc(db, 'artifacts', appId, 'users', userId, 'stockMovements', movementId), {
+                            productId: id,
+                            productName: product.name,
+                            type: quantityChange > 0 ? 'stock-in' : 'stock-out',
+                            quantity: Math.abs(quantityChange),
+                            reason: 'CSV import adjustment',
+                            createdAt: new Date().toISOString()
+                        });
+                        movementCount++;
+                    }
+                });
+                await batch.commit();
+                showInventoryStatus(`Imported ${imports.length} products; recorded ${movementCount} stock changes.`, 'success');
+            } catch (error) {
+                console.error("Product CSV import failed:", error);
+                showInventoryStatus(`CSV import failed: ${error.message || describeFirebaseError(error)}`, 'error');
+            } finally {
+                input.value = '';
+            }
+        }
+
+        window.adjustProductStock = async function(productId, direction, quantityValue) {
+            if (!userId) {
+                showInventoryStatus('Firebase is not connected. Please wait and try again.', 'error');
+                return;
+            }
+            const quantity = Number(quantityValue);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                showInventoryStatus('Stock adjustment must be a whole number greater than zero.', 'error');
+                return;
+            }
+
+            const product = productList.find(item => item.id === productId);
+            if (!product) {
+                showInventoryStatus('Product could not be found. Refresh and try again.', 'error');
+                return;
+            }
+            const productRef = doc(db, 'artifacts', appId, 'users', userId, 'products', productId);
+            const movementRef = doc(collection(db, 'artifacts', appId, 'users', userId, 'stockMovements'));
+            try {
+                await runTransaction(db, async transaction => {
+                    const productSnapshot = await transaction.get(productRef);
+                    if (!productSnapshot.exists()) throw new Error('Product no longer exists.');
+                    const currentStock = Number.isInteger(productSnapshot.data().stock) ? productSnapshot.data().stock : 0;
+                    const nextStock = currentStock + (direction === 'in' ? quantity : -quantity);
+                    if (nextStock < 0) throw new Error('Cannot remove more stock than is currently available.');
+                    transaction.update(productRef, { stock: nextStock });
+                    transaction.set(movementRef, {
+                        productId,
+                        productName: productSnapshot.data().name || product.name,
+                        type: direction === 'in' ? 'stock-in' : 'stock-out',
+                        quantity,
+                        reason: direction === 'in' ? 'Manual stock received' : 'Manual stock removed',
+                        createdAt: new Date().toISOString()
+                    });
+                });
+                showInventoryStatus(`Stock ${direction === 'in' ? 'received' : 'removed'} for ${product.name}.`, 'success');
+            } catch (error) {
+                console.error("Stock adjustment failed:", error);
+                showInventoryStatus(`Could not adjust stock: ${error.message || describeFirebaseError(error)}`, 'error');
+            }
+        }
+
+        window.renderStockMovements = function() {
+            const tbody = document.getElementById('stock-movement-list');
+            tbody.replaceChildren();
+            if (stockMovementList.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 4;
+                cell.className = 'py-3 text-center text-gray-500';
+                cell.textContent = 'No stock changes recorded yet.';
+                return;
+            }
+            stockMovementList.slice(0, 50).forEach(movement => {
+                const row = tbody.insertRow();
+                const values = [
+                    movement.createdAt ? new Date(movement.createdAt).toLocaleString() : '',
+                    movement.productName || '',
+                    movement.reason || movement.type || '',
+                    `${movement.type === 'stock-out' ? '-' : '+'}${Number(movement.quantity) || 0}`
+                ];
+                values.forEach((value, index) => {
+                    const cell = row.insertCell();
+                    cell.className = `py-2 px-3 ${index === 3 ? 'text-right font-semibold' : 'text-gray-600'}`;
+                    cell.textContent = value;
+                });
+            });
         }
 
         window.deleteProduct = async function(id) {
@@ -1041,7 +1535,7 @@
         }
 
         window.backupData = function() {
-            const allData = { customerList, productList, invoiceHistoryList, expenseList, exportDate: new Date().toISOString() };
+            const allData = { customerList, productList, stockMovementList, invoiceHistoryList, expenseList, exportDate: new Date().toISOString() };
             const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
