@@ -90,6 +90,9 @@
         <button onclick="openExpenseDashboard()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
             ចំណាយ
         </button>
+        <button onclick="openBusinessReport()" class="bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
+            Reports
+        </button>
         <button onclick="backupData()" id="backup-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow flex items-center transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -367,6 +370,48 @@
         </div>
     </div>
 
+    <!-- Business Reports Modal -->
+    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Business Report</h2>
+                <button onclick="closeBusinessReport()" class="text-gray-500 hover:text-gray-700" aria-label="Close report">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-end gap-3 mb-5">
+                <label class="text-sm text-gray-700">From
+                    <input id="report-start-date" type="date" onchange="renderBusinessReport()" class="mt-1 border rounded px-3 py-2">
+                </label>
+                <label class="text-sm text-gray-700">To
+                    <input id="report-end-date" type="date" onchange="renderBusinessReport()" class="mt-1 border rounded px-3 py-2">
+                </label>
+                <button onclick="exportBusinessReportCsv()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">Export report CSV</button>
+            </div>
+            <p id="report-status" class="text-sm text-red-600 mb-3" role="status" aria-live="polite"></p>
+            <p class="text-xs text-gray-500 mb-3">Net after expenses is sales minus recorded expenses; product costs, taxes, and payment collection are not included.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="rounded-lg bg-blue-50 p-4"><p class="text-sm text-blue-700">Product sales</p><p id="report-sales" class="text-xl font-bold text-blue-900">$0.00</p></div>
+                <div class="rounded-lg bg-rose-50 p-4"><p class="text-sm text-rose-700">Expenses</p><p id="report-expenses" class="text-xl font-bold text-rose-900">$0.00</p></div>
+                <div class="rounded-lg bg-emerald-50 p-4"><p class="text-sm text-emerald-700">Sales minus expenses</p><p id="report-net" class="text-xl font-bold text-emerald-900">$0.00</p></div>
+                <div class="rounded-lg bg-amber-50 p-4"><p class="text-sm text-amber-700">Carried unpaid bill amounts</p><p id="report-unpaid" class="text-xl font-bold text-amber-900">$0.00</p></div>
+            </div>
+            <h3 class="font-semibold text-gray-800 mb-2">Best-selling products</h3>
+            <div class="max-h-72 overflow-y-auto border rounded">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-2 px-3 border-b text-gray-700">Product</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Quantity sold</th>
+                            <th class="py-2 px-3 border-b text-right text-gray-700">Sales</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-product-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Datalists for Autocomplete Search -->
     <datalist id="product-datalist"></datalist>
     <datalist id="customer-datalist"></datalist>
@@ -536,6 +581,7 @@
                 snapshot.forEach(d => invoiceHistoryList.push({ id: d.id, ...d.data() }));
                 invoiceHistoryList.sort((a, b) => b.id.localeCompare(a.id)); // Sort newest first
                 if(document.getElementById('invoice-history-modal').classList.contains('flex')) window.renderInvoiceHistory();
+                if (document.getElementById('report-modal').classList.contains('flex')) window.renderBusinessReport();
             }, (error) => console.error(error));
 
             // Watch Business Expenses Collection
@@ -544,6 +590,7 @@
                 snapshot.forEach(d => expenseList.push({ id: d.id, ...d.data() }));
                 expenseList.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id.localeCompare(a.id));
                 if (document.getElementById('expense-modal').classList.contains('flex')) window.renderExpenses();
+                if (document.getElementById('report-modal').classList.contains('flex')) window.renderBusinessReport();
             }, (error) => {
                 console.error("Expense listener failed:", error);
                 showExpenseStatus(`Could not load expenses: ${describeFirebaseError(error)}`, 'error');
@@ -1531,6 +1578,144 @@
             } catch (error) {
                 console.error("Expense deletion failed:", error);
                 showExpenseStatus(`Could not delete expense: ${describeFirebaseError(error)}`, 'error');
+            }
+        }
+
+        function calculateBusinessReport(invoices, expenses, startDate, endDate) {
+            if (!startDate || !endDate || startDate > endDate) {
+                throw new Error('Choose a valid date range.');
+            }
+            const filteredInvoices = invoices.filter(invoice =>
+                typeof invoice.date === 'string' && invoice.date >= startDate && invoice.date <= endDate
+            );
+            const filteredExpenses = expenses.filter(expense =>
+                typeof expense.date === 'string' && expense.date >= startDate && expense.date <= endDate
+            );
+            const products = new Map();
+            let sales = 0;
+            let carriedUnpaid = 0;
+
+            filteredInvoices.forEach(invoice => {
+                carriedUnpaid += Number(invoice.unpaidBill) || 0;
+                (Array.isArray(invoice.items) ? invoice.items : []).forEach(item => {
+                    const name = typeof item.name === 'string' ? item.name.trim() : '';
+                    const quantity = Number(item.qty);
+                    const price = Number(item.price);
+                    if (!name || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price < 0) return;
+                    const itemSales = quantity * price;
+                    sales += itemSales;
+                    const current = products.get(name) || { name, quantity: 0, sales: 0 };
+                    current.quantity += quantity;
+                    current.sales += itemSales;
+                    products.set(name, current);
+                });
+            });
+
+            const expenseTotal = filteredExpenses.reduce((total, expense) => total + (Number(expense.amount) || 0), 0);
+            return {
+                invoices: filteredInvoices,
+                expenses: filteredExpenses,
+                sales,
+                expenseTotal,
+                netAfterExpenses: sales - expenseTotal,
+                carriedUnpaid,
+                products: Array.from(products.values()).sort((a, b) => b.quantity - a.quantity || b.sales - a.sales)
+            };
+        }
+
+        window.openBusinessReport = function() {
+            document.getElementById('report-modal').classList.remove('hidden');
+            document.getElementById('report-modal').classList.add('flex');
+            const today = getLocalDateString();
+            document.getElementById('report-start-date').value = `${today.slice(0, 7)}-01`;
+            document.getElementById('report-end-date').value = today;
+            window.renderBusinessReport();
+        }
+
+        window.closeBusinessReport = function() {
+            document.getElementById('report-modal').classList.add('hidden');
+            document.getElementById('report-modal').classList.remove('flex');
+        }
+
+        window.renderBusinessReport = function() {
+            const status = document.getElementById('report-status');
+            let report;
+            try {
+                report = calculateBusinessReport(
+                    invoiceHistoryList,
+                    expenseList,
+                    document.getElementById('report-start-date').value,
+                    document.getElementById('report-end-date').value
+                );
+            } catch (error) {
+                status.textContent = error.message;
+                return;
+            }
+            status.textContent = '';
+            document.getElementById('report-sales').textContent = `$${report.sales.toFixed(2)}`;
+            document.getElementById('report-expenses').textContent = `$${report.expenseTotal.toFixed(2)}`;
+            document.getElementById('report-net').textContent = `$${report.netAfterExpenses.toFixed(2)}`;
+            document.getElementById('report-unpaid').textContent = `$${report.carriedUnpaid.toFixed(2)}`;
+
+            const tbody = document.getElementById('report-product-list');
+            tbody.replaceChildren();
+            if (report.products.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 3;
+                cell.className = 'py-4 text-center text-gray-500';
+                cell.textContent = 'No product sales in this date range.';
+                return;
+            }
+            report.products.slice(0, 20).forEach(product => {
+                const row = tbody.insertRow();
+                [product.name, product.quantity.toLocaleString(), `$${product.sales.toFixed(2)}`].forEach((value, index) => {
+                    const cell = row.insertCell();
+                    cell.className = `py-2 px-3 ${index > 0 ? 'text-right' : 'text-gray-700'}`;
+                    cell.textContent = value;
+                });
+            });
+        }
+
+        window.exportBusinessReportCsv = function() {
+            try {
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                const report = calculateBusinessReport(invoiceHistoryList, expenseList, startDate, endDate);
+                const rows = [
+                    ['Business Report', `${startDate} to ${endDate}`],
+                    ['Product sales', report.sales.toFixed(2)],
+                    ['Expenses', report.expenseTotal.toFixed(2)],
+                    ['Sales minus expenses (excludes product cost/tax)', report.netAfterExpenses.toFixed(2)],
+                    ['Carried unpaid bill amounts', report.carriedUnpaid.toFixed(2)],
+                    ['Invoices', report.invoices.length],
+                    [],
+                    ['Best-selling products'],
+                    ['Product', 'Quantity sold', 'Sales'],
+                    ...report.products.map(product => [product.name, product.quantity, product.sales.toFixed(2)]),
+                    [],
+                    ['Invoices'],
+                    ['Date', 'Customer', 'Product sales', 'Carried unpaid amount']
+                ];
+                report.invoices.forEach(invoice => {
+                    const productSales = (Array.isArray(invoice.items) ? invoice.items : []).reduce((total, item) => {
+                        const quantity = Number(item.qty);
+                        const price = Number(item.price);
+                        return total + (Number.isFinite(quantity) && quantity > 0 && Number.isFinite(price) && price >= 0 ? quantity * price : 0);
+                    }, 0);
+                    rows.push([invoice.date || '', invoice.customerName || '', productSales.toFixed(2), (Number(invoice.unpaidBill) || 0).toFixed(2)]);
+                });
+                rows.push([], ['Expenses'], ['Date', 'Category', 'Description', 'Amount']);
+                report.expenses.forEach(expense => rows.push([
+                    expense.date || '',
+                    expense.category || '',
+                    expense.description || '',
+                    (Number(expense.amount) || 0).toFixed(2)
+                ]));
+                downloadCsv(`business-report-${startDate}-to-${endDate}.csv`, rows);
+                document.getElementById('report-status').textContent = 'Report CSV exported for Excel.';
+            } catch (error) {
+                document.getElementById('report-status').textContent = error.message;
             }
         }
 
