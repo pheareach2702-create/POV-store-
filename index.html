@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice Generator</title>
+    <title>Sunday Supply Co. | Thoughtful things for everyday</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
         
         body {
             font-family: 'Inter', sans-serif;
@@ -29,6 +30,42 @@
         }
         #pos-receipt {
             display: none;
+        }
+
+        body.storefront-open {
+            padding: 0;
+            background: #fbfaf7;
+            color: #20352c;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .storefront {
+            --forest: #234d3b;
+            --sage: #e8eee6;
+            --ink: #20352c;
+            --muted: #737b73;
+            color: var(--ink);
+            background: #fbfaf7;
+            min-height: 100vh;
+        }
+        .storefront button, .storefront a { -webkit-tap-highlight-color: transparent; }
+        .storefront .serif { font-family: 'Playfair Display', Georgia, serif; }
+        .store-notice { background: #234d3b; color: #f8f6ef; }
+        .store-header { background: rgba(251,250,247,.96); border-bottom: 1px solid #eceae3; }
+        .store-link { color: #58665b; transition: color .2s; }
+        .store-link:hover { color: #234d3b; }
+        .store-button { background: #234d3b; color: white; transition: background .2s, transform .2s; }
+        .store-button:hover { background: #183d2d; transform: translateY(-1px); }
+        .store-hero { background: #f1f0e9; }
+        .hero-photo { background-position: center; background-size: cover; }
+        .store-product-image { aspect-ratio: 1 / .92; background: #efeee7; }
+        .store-card { border: 1px solid #efeee8; transition: transform .25s, box-shadow .25s; }
+        .store-card:hover { transform: translateY(-4px); box-shadow: 0 16px 35px rgba(37,55,44,.09); }
+        .store-modal-backdrop { background: rgba(25,36,29,.46); }
+        .store-modal { box-shadow: 0 25px 80px rgba(20,32,24,.2); }
+        .store-toast { animation: store-toast-in .22s ease-out; }
+        @keyframes store-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            .store-card, .store-button, .store-link { transition: none; }
         }
         
         @page receipt58 {
@@ -130,10 +167,101 @@
         }
     </style>
 </head>
-<body class="py-10 text-gray-800">
+<body class="storefront-open py-10 text-gray-800">
+    <div id="storefront" class="storefront" lang="en">
+        <div class="store-notice px-4 py-2 text-center text-xs tracking-wide sm:text-sm">A little more joy in the everyday <span aria-hidden="true">✳</span> Thoughtfully picked, packed with care</div>
+        <header class="store-header sticky top-0 z-30">
+            <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+                <a href="#" class="flex items-center gap-3 text-inherit no-underline" aria-label="Sunday Supply Co. home">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8eee6] text-xl text-[#234d3b]" aria-hidden="true">✳</span>
+                    <span><span class="serif block text-lg font-semibold leading-tight">Sunday Supply</span><span class="block text-[10px] uppercase tracking-[.2em] text-[#858b81]">Good things, gathered</span></span>
+                </a>
+                <nav class="hidden items-center gap-8 text-sm md:flex" aria-label="Main navigation">
+                    <a class="store-link no-underline" href="#shop">Shop all</a>
+                    <a class="store-link no-underline" href="#our-story">Our story</a>
+                    <a class="store-link no-underline" href="#visit-us">Visit us</a>
+                </nav>
+                <div class="flex items-center gap-3">
+                    <button id="cart-open" class="flex items-center gap-2 rounded-full border border-[#d9ddd4] px-4 py-2 text-sm font-semibold hover:bg-[#f1f0e9]" aria-label="Open shopping bag">
+                        <span aria-hidden="true">Bag</span><span id="cart-count" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#234d3b] px-1 text-[11px] text-white">0</span>
+                    </button>
+                    <button id="manage-store" class="store-button rounded-full px-3 py-2 text-xs font-semibold sm:px-4 sm:text-sm">Seller tools</button>
+                </div>
+            </div>
+        </header>
 
+        <main>
+            <section class="store-hero">
+                <div class="mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 md:grid-cols-[.92fr_1.08fr] md:px-8 md:py-20">
+                    <div class="max-w-xl py-3">
+                        <p class="mb-5 text-xs font-semibold uppercase tracking-[.22em] text-[#647e68]">Small finds. Feel-good living.</p>
+                        <h1 class="serif mb-6 text-5xl font-medium leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">Make room for <em class="font-medium text-[#73866d]">lovely</em> little things.</h1>
+                        <p class="mb-8 max-w-md text-base leading-7 text-[#69736b]">Everyday essentials and thoughtful gifts, chosen to make home feel a little more like you.</p>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <a href="#shop" class="store-button inline-flex items-center gap-3 rounded-full px-6 py-3.5 text-sm font-semibold no-underline">Find your favorite <span aria-hidden="true">↗</span></a>
+                            <span class="text-xs text-[#7c8379]">Free local delivery over $50</span>
+                        </div>
+                        <div class="mt-10 flex items-center gap-3 text-sm text-[#6c756b]"><span class="text-lg text-[#bd8e50]" aria-hidden="true">★★★★★</span><span>Little moments, made better</span></div>
+                    </div>
+                    <div class="relative mx-auto grid w-full max-w-2xl grid-cols-[1.08fr_.92fr] items-center gap-3 sm:gap-5">
+                        <div class="hero-photo aspect-[.82] rounded-[48%_48%_8px_8px] bg-[#d9dfd2]" style="background-image:url('https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=85')" role="img" aria-label="A calm, sunlit home interior"></div>
+                        <div class="mt-14">
+                            <div class="hero-photo aspect-[.83] rounded-t-full bg-[#d8d0c2]" style="background-image:url('https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=800&q=85')" role="img" aria-label="A cozy home with carefully chosen objects"></div>
+                            <p class="serif mt-4 text-center text-lg italic text-[#657863]">Made for your kind of Sunday</p>
+                        </div>
+                        <span class="absolute -bottom-3 left-3 flex h-20 w-20 -rotate-12 items-center justify-center rounded-full border border-[#d2d8cc] bg-[#fbfaf7] text-center text-[10px] font-semibold uppercase leading-4 tracking-wider text-[#536b56] sm:left-8 sm:h-24 sm:w-24">Thoughtful<br>by nature</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="shop" class="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-20">
+                <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                    <div><p class="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-[#81907e]">The good stuff</p><h2 class="serif text-4xl font-medium sm:text-5xl">A few things we love</h2><p id="store-demo-note" class="mt-2 text-xs text-[#858a81]">Sample collection — add your products in Seller tools to make this shop your own.</p></div>
+                    <label class="relative block w-full sm:max-w-xs"><span class="sr-only">Search products</span><input id="store-search" type="search" placeholder="Find something lovely…" class="w-full rounded-full border border-[#dedfd7] bg-white px-5 py-3 pr-11 text-sm outline-none focus:border-[#80947f]"><span class="absolute right-4 top-3 text-[#81887d]" aria-hidden="true">⌕</span></label>
+                </div>
+                <div id="store-categories" class="mb-8 flex gap-2 overflow-x-auto pb-1" aria-label="Filter products"></div>
+                <div id="store-grid" class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4" aria-live="polite"></div>
+                <p id="store-empty" class="hidden py-16 text-center text-sm text-[#737b73]">No finds here just yet. Try another search or browse all the good stuff.</p>
+                <div class="mt-12 text-center"><p class="text-sm text-[#747c72]">Looking for something specific?</p><a id="store-help-link" href="mailto:hello@yourshop.com" class="mt-2 inline-block text-sm font-semibold text-[#234d3b] underline underline-offset-4">Just ask us — we’re happy to help</a></div>
+            </section>
+
+            <section id="our-story" class="bg-[#e8eee6]">
+                <div class="mx-auto grid max-w-7xl gap-8 px-5 py-14 md:grid-cols-[1fr_1.5fr] md:items-center md:px-8 md:py-16">
+                    <div><p class="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-[#758873]">A note from our little shop</p><h2 class="serif text-4xl font-medium">Good things, gathered with care.</h2></div>
+                    <p class="max-w-2xl text-sm leading-7 text-[#59675b]">We believe the things we reach for every day deserve a little thought. Sunday Supply is a small independent shop for useful, beautiful pieces that bring a bit of calm and character to your home. Thanks for shopping small and being here.</p>
+                </div>
+            </section>
+        </main>
+        <footer id="visit-us" class="bg-[#20392d] text-[#f8f6ef]">
+            <div class="mx-auto grid max-w-7xl gap-9 px-5 py-12 sm:grid-cols-2 md:px-8 lg:grid-cols-3">
+                <div><p class="serif mb-3 text-2xl">Sunday Supply</p><p class="max-w-xs text-sm leading-6 text-[#c3cec2]">Thoughtful finds for slow mornings, cozy corners, and all the days in between.</p></div>
+                <div><p class="mb-3 text-xs font-semibold uppercase tracking-[.18em] text-[#c3cec2]">Say hello</p><a id="store-email-link" href="mailto:hello@yourshop.com" class="text-sm text-white underline underline-offset-4">hello@yourshop.com</a><p class="mt-2 text-xs text-[#aebcaf]">Replace this demo email with your shop's contact.</p></div>
+                <div><p class="mb-3 text-xs font-semibold uppercase tracking-[.18em] text-[#c3cec2]">A small-shop promise</p><p class="text-sm leading-6 text-[#c3cec2]">Packed with care · Friendly local delivery · Here to help</p></div>
+            </div>
+            <div class="border-t border-white/10 px-5 py-4 text-center text-xs text-[#aebcaf]">© 2026 Sunday Supply Co. · Made with care, for everyday</div>
+        </footer>
+    </div>
+
+    <div id="store-cart-modal" class="store-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+        <div class="store-modal flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-[#fbfaf7]">
+            <div class="flex items-center justify-between border-b border-[#e8e6de] px-5 py-4 sm:px-7">
+                <div><p class="text-[10px] font-semibold uppercase tracking-[.2em] text-[#82907f]">Your good finds</p><h2 id="cart-title" class="serif text-2xl">Shopping bag</h2></div>
+                <button id="cart-close" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#eeede6]" aria-label="Close shopping bag">✕</button>
+            </div>
+            <div id="cart-items" class="min-h-28 flex-1 overflow-y-auto px-5 py-2 sm:px-7"></div>
+            <div class="border-t border-[#e8e6de] px-5 py-5 sm:px-7">
+                <div class="mb-4 flex items-center justify-between text-sm"><span class="text-[#737b73]">Subtotal</span><strong id="cart-subtotal" class="text-lg">$0.00</strong></div>
+                <p class="mb-4 text-xs leading-5 text-[#858a81]">Delivery and any applicable taxes can be confirmed when we get in touch. This storefront uses a demo email — replace it with your shop's address before publishing.</p>
+                <a id="checkout-link" href="mailto:hello@yourshop.com" class="store-button block rounded-full px-5 py-3.5 text-center text-sm font-semibold no-underline">Send order by email <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </div>
+    <div id="store-toast" class="store-toast fixed bottom-5 left-1/2 z-[60] hidden -translate-x-1/2 rounded-full bg-[#20392d] px-5 py-3 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite"></div>
+
+    <div id="seller-workspace" class="hidden">
     <!-- Action Buttons (Hidden on Print) -->
     <div class="max-w-4xl mx-auto mb-4 flex justify-end gap-3 no-print px-4 flex-wrap">
+        <button onclick="showStorefront()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-4 rounded shadow">View storefront</button>
         <button onclick="openInvoiceHistory()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded shadow flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -291,6 +419,7 @@
 
     </div>
 
+    </div>
     <div id="pos-receipt" aria-hidden="true"></div>
 
     <!-- Product Dashboard Modal (Hidden by default) -->
@@ -587,6 +716,113 @@
         let invoiceHistoryList = [];
         let expenseList = [];
         const MAX_INVOICES = 500;
+        const STORE_EMAIL = 'hello@yourshop.com';
+        const storeSampleProducts = [
+            { id: 'sample-pour-over', name: 'Ceramic Pour-over Set', price: 32, category: 'Home', stock: 8, description: 'Slow mornings start here.', image: 'photo-1495474472287-4d71bcdd2085' },
+            { id: 'sample-market-tote', name: 'Everyday Linen Tote', price: 18, category: 'Accessories', stock: 12, description: 'Room for all the little things.', image: 'photo-1544816155-12df9643f363' },
+            { id: 'sample-cloud-mug', name: 'Cloud Nine Stoneware Mug', price: 24, category: 'Home', stock: 6, description: 'Your new favorite morning cup.', image: 'photo-1514228742587-6b1558fcca3d' },
+            { id: 'sample-desk-lamp', name: 'Soft Glow Table Lamp', price: 46, category: 'Home', stock: 5, description: 'A softer light for slower nights.', image: 'photo-1507473885765-e6ed057f782c' },
+            { id: 'sample-journal', name: 'The Sunday Journal', price: 16, category: 'Stationery', stock: 14, description: 'A little space for your thoughts.', image: 'photo-1517842645767-c639042777db' },
+            { id: 'sample-candle', name: 'Cedar & Fig Candle', price: 28, category: 'Home', stock: 9, description: 'A warm, woody note for home.', image: 'photo-1603006905003-be475563bc59' }
+        ];
+        let activeStoreCategory = 'All';
+        let storeSearchQuery = '';
+        let storeCart = new Map();
+
+        function escapeStoreHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[character]);
+        }
+
+        function getStoreProducts() {
+            if (!productList.length) return storeSampleProducts;
+            return productList.map(product => ({
+                ...product,
+                category: product.category || 'Shop',
+                description: product.description || 'A thoughtful find for everyday.',
+                image: product.image || 'photo-1490312278390-ab64016e0aa9'
+            }));
+        }
+
+        function renderStorefront() {
+            const products = getStoreProducts();
+            document.getElementById('store-demo-note').classList.toggle('hidden', productList.length > 0);
+            const categories = ['All', ...new Set(products.map(product => product.category || 'Shop'))];
+            if (!categories.includes(activeStoreCategory)) activeStoreCategory = 'All';
+            document.getElementById('store-categories').innerHTML = categories.map(category => `
+                <button type="button" data-store-category="${escapeStoreHtml(category)}" class="shrink-0 rounded-full border px-5 py-2 text-sm transition ${category === activeStoreCategory ? 'border-[#234d3b] bg-[#234d3b] text-white' : 'border-[#dedfd7] bg-white text-[#59675b] hover:border-[#aab7a7]'}">${escapeStoreHtml(category)}</button>
+            `).join('');
+
+            const matchingProducts = products.filter(product => {
+                const categoryMatches = activeStoreCategory === 'All' || product.category === activeStoreCategory;
+                const searchMatches = `${product.name} ${product.description} ${product.category}`.toLowerCase().includes(storeSearchQuery);
+                return categoryMatches && searchMatches;
+            });
+            document.getElementById('store-empty').classList.toggle('hidden', matchingProducts.length > 0);
+            document.getElementById('store-grid').innerHTML = matchingProducts.map((product, index) => {
+                const image = `https://images.unsplash.com/${escapeStoreHtml(product.image)}?auto=format&fit=crop&w=720&q=80`;
+                const outOfStock = Number.isFinite(Number(product.stock)) && Number(product.stock) <= 0;
+                return `
+                    <article class="store-card overflow-hidden rounded-xl bg-white">
+                        <div class="store-product-image relative overflow-hidden">
+                            <img src="${image}" alt="${escapeStoreHtml(product.name)}" class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="${index > 1 ? 'lazy' : 'eager'}">
+                            <span class="absolute left-3 top-3 rounded-full bg-[#fbfaf7]/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#60735f]">${escapeStoreHtml(product.category || 'Shop')}</span>
+                        </div>
+                        <div class="p-3.5 sm:p-5">
+                            <div class="flex items-start justify-between gap-2"><h3 class="serif text-base leading-snug sm:text-lg">${escapeStoreHtml(product.name)}</h3><span class="shrink-0 text-sm font-semibold">$${Number(product.price || 0).toFixed(2)}</span></div>
+                            <p class="mt-1.5 min-h-10 text-xs leading-5 text-[#858a81]">${escapeStoreHtml(product.description)}</p>
+                            <button type="button" data-add-product="${escapeStoreHtml(product.id)}" class="mt-3 w-full rounded-full border border-[#234d3b] px-3 py-2.5 text-xs font-semibold text-[#234d3b] transition hover:bg-[#234d3b] hover:text-white disabled:cursor-not-allowed disabled:border-[#d8d9d2] disabled:text-[#999d95] disabled:hover:bg-white" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Currently unavailable' : 'Add to bag +'}</button>
+                        </div>
+                    </article>`;
+            }).join('');
+        }
+
+        function showStoreToast(message) {
+            const toast = document.getElementById('store-toast');
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            clearTimeout(showStoreToast.timeout);
+            showStoreToast.timeout = setTimeout(() => toast.classList.add('hidden'), 2200);
+        }
+
+        function renderStoreCart() {
+            const productsById = new Map(getStoreProducts().map(product => [product.id, product]));
+            for (const [id, quantity] of storeCart) {
+                if (!productsById.has(id)) storeCart.delete(id);
+                else if (quantity <= 0) storeCart.delete(id);
+            }
+            const cartItems = [...storeCart].map(([id, quantity]) => ({ product: productsById.get(id), quantity }));
+            document.getElementById('cart-count').textContent = String(cartItems.reduce((sum, item) => sum + item.quantity, 0));
+            document.getElementById('cart-items').innerHTML = cartItems.length ? cartItems.map(({ product, quantity }) => `
+                <div class="flex items-center gap-4 border-b border-[#e8e6de] py-4">
+                    <img src="https://images.unsplash.com/${escapeStoreHtml(product.image || 'photo-1490312278390-ab64016e0aa9')}?auto=format&fit=crop&w=180&q=75" alt="" class="h-16 w-16 rounded-lg object-cover">
+                    <div class="min-w-0 flex-1"><h3 class="serif truncate text-base">${escapeStoreHtml(product.name)}</h3><p class="mt-1 text-sm text-[#737b73]">$${Number(product.price || 0).toFixed(2)}</p></div>
+                    <div class="flex items-center gap-2"><button type="button" data-cart-change="${escapeStoreHtml(product.id)}" data-cart-delta="-1" class="flex h-8 w-8 items-center justify-center rounded-full border border-[#dedfd7]" aria-label="Remove one ${escapeStoreHtml(product.name)}">−</button><span class="w-4 text-center text-sm">${quantity}</span><button type="button" data-cart-change="${escapeStoreHtml(product.id)}" data-cart-delta="1" class="flex h-8 w-8 items-center justify-center rounded-full border border-[#dedfd7]" aria-label="Add one ${escapeStoreHtml(product.name)}">+</button></div>
+                </div>`).join('') : '<div class="py-12 text-center"><span class="text-3xl text-[#81907e]" aria-hidden="true">✳</span><p class="serif mt-3 text-xl">Your bag is taking a little pause.</p><p class="mt-2 text-sm text-[#737b73]">Add a few things you love and they’ll be waiting here.</p></div>';
+            const subtotal = cartItems.reduce((sum, item) => sum + Number(item.product.price || 0) * item.quantity, 0);
+            document.getElementById('cart-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            const checkoutLink = document.getElementById('checkout-link');
+            const orderLines = cartItems.map(({ product, quantity }) => `${quantity} × ${product.name} — $${(Number(product.price || 0) * quantity).toFixed(2)}`);
+            const subject = encodeURIComponent('Order inquiry — Sunday Supply Co.');
+            const body = encodeURIComponent(`Hello Sunday Supply,\n\nI'd like to ask about this order:\n${orderLines.join('\n')}\n\nSubtotal: $${subtotal.toFixed(2)}\n\nPlease let me know about availability and delivery. Thank you!`);
+            checkoutLink.href = `mailto:${STORE_EMAIL}?subject=${subject}&body=${body}`;
+            checkoutLink.classList.toggle('pointer-events-none', cartItems.length === 0);
+            checkoutLink.classList.toggle('opacity-50', cartItems.length === 0);
+            checkoutLink.setAttribute('aria-disabled', String(cartItems.length === 0));
+        }
+
+        window.showStorefront = function() {
+            document.getElementById('storefront').classList.remove('hidden');
+            document.getElementById('seller-workspace').classList.add('hidden');
+            document.body.classList.add('storefront-open');
+        };
+
+        window.showSellerWorkspace = function() {
+            document.getElementById('storefront').classList.add('hidden');
+            document.getElementById('seller-workspace').classList.remove('hidden');
+            document.body.classList.remove('storefront-open');
+        };
 
         function getLocalDateKey(date = new Date()) {
             const year = date.getFullYear();
@@ -714,6 +950,8 @@
                 snapshot.forEach(d => productList.push({ id: d.id, ...d.data() }));
                 isProductListLoaded = true;
                 updateProductDatalist();
+                renderStorefront();
+                renderStoreCart();
                 if (document.getElementById('product-modal').classList.contains('flex')) window.renderDashboardProducts();
             }, (error) => console.error(error));
 
@@ -2229,6 +2467,74 @@
                 setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 3000);
             }
         }
+
+        document.getElementById('manage-store').addEventListener('click', window.showSellerWorkspace);
+        document.getElementById('store-categories').addEventListener('click', event => {
+            const button = event.target.closest('[data-store-category]');
+            if (!button) return;
+            activeStoreCategory = button.dataset.storeCategory;
+            renderStorefront();
+        });
+        document.getElementById('store-search').addEventListener('input', event => {
+            storeSearchQuery = event.target.value.trim().toLowerCase();
+            renderStorefront();
+        });
+        document.getElementById('store-grid').addEventListener('click', event => {
+            const button = event.target.closest('[data-add-product]');
+            if (!button) return;
+            const product = getStoreProducts().find(item => item.id === button.dataset.addProduct);
+            if (!product) return;
+            const quantity = storeCart.get(product.id) || 0;
+            if (Number.isFinite(Number(product.stock)) && quantity >= Number(product.stock)) {
+                showStoreToast('That’s all we have available right now.');
+                return;
+            }
+            storeCart.set(product.id, quantity + 1);
+            renderStoreCart();
+            showStoreToast(`${product.name} added to your bag`);
+        });
+        document.getElementById('cart-items').addEventListener('click', event => {
+            const button = event.target.closest('[data-cart-change]');
+            if (!button) return;
+            const id = button.dataset.cartChange;
+            const current = storeCart.get(id) || 0;
+            const delta = Number(button.dataset.cartDelta);
+            const next = current + delta;
+            if (next <= 0) storeCart.delete(id);
+            else {
+                const product = getStoreProducts().find(item => item.id === id);
+                if (product && Number.isFinite(Number(product.stock)) && next > Number(product.stock)) {
+                    showStoreToast('That’s all we have available right now.');
+                    return;
+                }
+                storeCart.set(id, next);
+            }
+            renderStoreCart();
+        });
+        document.getElementById('cart-open').addEventListener('click', () => {
+            renderStoreCart();
+            document.getElementById('store-cart-modal').classList.remove('hidden');
+            document.getElementById('store-cart-modal').classList.add('flex');
+            document.getElementById('cart-close').focus();
+        });
+        const closeStoreCart = () => {
+            const modal = document.getElementById('store-cart-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('cart-open').focus();
+        };
+        document.getElementById('cart-close').addEventListener('click', closeStoreCart);
+        document.getElementById('store-cart-modal').addEventListener('click', event => {
+            if (event.target.id === 'store-cart-modal') closeStoreCart();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !document.getElementById('store-cart-modal').classList.contains('hidden')) closeStoreCart();
+        });
+        document.getElementById('store-help-link').href = `mailto:${STORE_EMAIL}?subject=${encodeURIComponent('Product question — Sunday Supply Co.')}`;
+        document.getElementById('store-email-link').href = `mailto:${STORE_EMAIL}`;
+        document.getElementById('store-email-link').textContent = STORE_EMAIL;
+        renderStorefront();
+        renderStoreCart();
 
         // Kick off initialization
         initApp();
